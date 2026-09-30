@@ -1,0 +1,10 @@
+{
+  "description": "Automates evidence collection and incident investigation with explainable AI to enhance security analysts' efficiency in FinTech SOCs.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
