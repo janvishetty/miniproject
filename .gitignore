@@ -34,3 +34,7 @@ venv/
 # OS / temporary files
 *.tmp
 *.temp
+
+# ML generated outputs (scored events, trained models) - rerun scripts to regenerate
+backend/ml/output/
+data/processed/
