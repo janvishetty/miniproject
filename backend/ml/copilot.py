@@ -23,7 +23,10 @@ import urllib.error
 from collections import Counter
 from pathlib import Path
 
-import summarize as S   # reuse facts_block, containment_actions, grounding_check, ask_ollama
+try:                      # imported as a package by the backend: from backend.ml.copilot import answer
+    from . import summarize as S
+except ImportError:       # run as a script: python backend/ml/copilot.py
+    import summarize as S
 
 OUT = Path(__file__).resolve().parent / "output"
 SEV_ORDER = ["critical", "high", "medium", "low"]
