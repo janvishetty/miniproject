@@ -38,7 +38,7 @@ def load(out: Path):
     t = t[t.anomaly_score >= TXN_THRESHOLD].assign(kind="txn", eid=lambda d: d.transaction_id)
     cols = ["eid", "kind", "timestamp", "user_id", "ip_address", "device_id", "location", "status",
             "amount", "merchant", "anomaly_score", "top_reasons", "ip_threat_score", "is_new_device",
-            "failed_logins_user_1h", "beneficiary_added_24h", "ip_not_usual"]
+            "failed_logins_user_1h", "beneficiary_added_24h", "ip_not_usual", "amount_ratio"]
     for df in (a, t):
         for c in cols:
             if c not in df:
@@ -62,6 +62,16 @@ def split_by_order(g):
         if len(pre):
             return [pre, g.drop(pre.index)]
     return [g]
+
+
+def noise_reason(g, vector):
+    """Low-value alerts found in the analyst review -> watch-list instead of incident list."""
+    if vector == "Transaction Anomaly" and (g.status == "failed").all() and g.amount_ratio.max() < 5:
+        return "only failed, small payments (declined card/bill), < 5x the user's normal amount"
+    if vector == "Suspicious Login" and (g.ip_not_usual == 0).all() and (g.is_new_device == 0).all() \
+            and g.ip_threat_score.max() <= 1:
+        return "login activity from the user's usual IP on a registered device (no Medium/High threat intel)"
+    return None
 
 
 def classify(g):
@@ -204,7 +214,10 @@ def main():
     rest["sess"] = sessions(rest, "user_id", "24h")
     for _, g in rest.groupby("sess"):
         for part in split_by_order(g):
-            incidents.append(build_incident(part, classify(part)))
+            v = classify(part)
+            inc = build_incident(part, v)
+            inc["_noise"] = noise_reason(part, v)
+            incidents.append(inc)
 
     incidents.sort(key=lambda x: x["start"])
     for i, inc in enumerate(incidents, 1):
@@ -212,10 +225,18 @@ def main():
     incidents.sort(key=lambda x: -x["risk_score"])
     incidents = [{"id": x.pop("id"), **x} for x in incidents]
 
+    # IDs are assigned BEFORE filtering, so kept incidents keep the same ID with or without the filter
+    watch = [{"id": x["id"], "vector": x["vector"], "reason": x["_noise"], "users": x["users"], "ips": x["ips"],
+              "start": x["start"], "event_ids": x["event_ids"]} for x in incidents if x.get("_noise")]
+    incidents = [{k: v for k, v in x.items() if k != "_noise"} for x in incidents if not x.get("_noise")]
+    (out / "watchlist.json").write_text(json.dumps(watch, indent=2, ensure_ascii=False))
     (out / "incidents.json").write_text(json.dumps(incidents, indent=2, ensure_ascii=False))
 
     df = pd.DataFrame(incidents)
-    print(f"{len(ev)} anomalous events -> {len(df)} incidents\n")
+    from collections import Counter
+    wc = Counter(w["vector"] for w in watch)
+    print(f"{len(ev)} anomalous events -> {len(df)} incidents  (+{len(watch)} low-value moved to watchlist.json: "
+          + ", ".join(f"{n} {v}" for v, n in wc.items()) + ")\n")
     print(pd.crosstab(df.vector, df.sev)[[s for s in ["critical", "high", "medium", "low"] if s in df.sev.values]], "\n")
     for x in incidents[:8]:
         print(f"{x['id']}  {x['sev']:8} conf={x['confidence']:3} impact={x['impact']:3}  {x['title']}")

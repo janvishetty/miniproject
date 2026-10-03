@@ -32,7 +32,7 @@ REASON_TEXT = {
     "failed_logins_ip_1h": lambda r: f"{int(r.failed_logins_ip_1h)} failed logins from this IP in 1h",
     "distinct_users_ip_24h": lambda r: f"IP touched {int(r.distinct_users_ip_24h)} different accounts in 24h",
     "amount_ratio": lambda r: f"Amount ₹{r.amount:,.0f} is {r.amount_ratio:.1f}x user's average",
-    "log_amount": lambda r: f"Large amount ₹{r.amount:,.0f}",
+    "log_amount": lambda r: f"Unusual amount ₹{r.amount:,.0f} for this user",
     "txns_user_1h": lambda r: f"{int(r.txns_user_1h)} transactions in 1h",
     "beneficiary_added_24h": lambda r: "New beneficiary added in previous 24h",
     "new_device_login_1h": lambda r: "Login from new device in previous 1h",

@@ -8,7 +8,7 @@ Victims are users who are not in any real incident, so every detection is attrib
 
 The original data and outputs are never touched (everything happens in output/inject_test/).
 
-Run (from repo root):  python backend/ml/inject_test.py [--per 10] [--seed 7]
+Run (from repo root):  python backend/ml/inject_test.py [--per 10] [--seeds 5]   (~1 min per seed)
 """
 import argparse
 import json
@@ -42,7 +42,8 @@ class Injector:
         ti = pd.read_csv(raw / "threat_indicators.csv")
         self.bad_ips = ti[ti.threat_level == "High"].ip_address.tolist()
         self.known_ips = set(ti.ip_address) | set(self.auth.ip_address) | set(self.txn.ip_address)
-        self.n = {"E": 900000, "T": 900000, "A": 900000, "D": 90000, "ip": 0}
+        # ID ranges chosen so they can't collide with real data (real attacker devices already use D90001-D90125)
+        self.n = {"E": 900000, "T": 900000, "A": 900000, "D": 990000, "ip": 0}
         self.rows = {"auth": [], "txn": [], "api": []}
         self.truth = []
         self.month = pd.Timestamp(self.auth.timestamp.min()).normalize()
@@ -165,33 +166,20 @@ def run(cmd):
         raise SystemExit(f"step failed: {' '.join(cmd)}\n{r.stderr[-2000:]}")
 
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--raw", default=str(ROOT / "data"))
-    p.add_argument("--per", type=int, default=10, help="attacks per type per difficulty")
-    p.add_argument("--seed", type=int, default=7)
-    a = p.parse_args()
-    raw, work = Path(a.raw), ML / "output" / "inject_test"
+def one_run(raw, seed, per, busy, work):
     shutil.rmtree(work, ignore_errors=True)
-
-    # victims: users not involved in any REAL incident
-    real = json.loads((ML / "output" / "incidents.json").read_text())
-    busy = {u for i in real for u in i["users"]}
-    inj = Injector(raw, a.seed)
+    inj = Injector(raw, seed)
     pool = [u for u in inj.users.user_id.unique() if u not in busy]
     inj.r.shuffle(pool)
     take = lambda k: [pool.pop() for _ in range(k)]
-
     for easy in (True, False):
-        for _ in range(a.per):
+        for _ in range(per):
             inj.brute_force(take(1)[0], easy)
             inj.credential_stuffing(take(8 if easy else 5), easy)
             inj.account_takeover(take(1)[0], easy)
             inj.app_scam(take(1)[0], easy)
     inj.write(work / "raw", raw)
     (work / "ground_truth_injected.json").write_text(json.dumps(inj.truth, indent=2))
-    print(f"planted {len(inj.truth)} attacks ({sum(len(t['event_ids']) for t in inj.truth)} events) "
-          f"on {sum(len(t['users']) for t in inj.truth)} clean users -> rerunning pipeline on the copy...")
 
     out = work / "output"
     run([str(ML / "preprocess.py"), "--raw", str(work / "raw"), "--processed", str(work / "processed"),
@@ -201,40 +189,61 @@ def main():
     run([str(ML / "incidents.py"), "--out", str(out)])
 
     incidents = json.loads((out / "incidents.json").read_text())
+    watch = {e for w in json.loads((out / "watchlist.json").read_text()) for e in w["event_ids"]}
     ev2inc = {e: i for i in incidents for e in i["event_ids"]}
     rows = []
     for t in inj.truth:
         hits = [ev2inc[e] for e in t["event_ids"] if e in ev2inc]
         vectors = sorted({h["vector"] for h in hits})
-        rows.append({**{k: t[k] for k in ("attack_id", "type", "difficulty", "note")},
-                     "events": len(t["event_ids"]), "events_in_incident": len(hits),
+        rows.append({"seed": seed, **{k: t[k] for k in ("attack_id", "type", "difficulty", "note")},
                      "detected": bool(hits), "type_correct": bool(set(vectors) & EXPECT[t["type"]]),
-                     "incident_types": vectors, "best_sev": max((h["sev"] for h in hits),
-                                                                key=["low", "medium", "high", "critical"].index,
-                                                                default=None)})
-    df = pd.DataFrame(rows)
-    summary = (df.groupby(["type", "difficulty"])
-                 .agg(attacks=("detected", "size"), detected=("detected", "sum"), type_correct=("type_correct", "sum"))
-                 .reset_index())
-    summary["recall"] = (summary.detected / summary.attacks).round(3)
-    summary["type_accuracy"] = (summary.type_correct / summary.attacks).round(3)
+                     "only_on_watchlist": (not hits) and any(e in watch for e in t["event_ids"]),
+                     "incident_types": vectors})
+    return pd.DataFrame(rows)
 
-    print("\nB. ATTACK-INJECTION TEST")
-    print(f"   {'attack':22}{'difficulty':11}{'detected':>10}{'recall':>8}{'right type':>12}")
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--raw", default=str(ROOT / "data"))
+    p.add_argument("--per", type=int, default=10, help="attacks per type per difficulty, per seed")
+    p.add_argument("--seeds", type=int, default=5, help="repeat with this many different random seeds")
+    a = p.parse_args()
+    raw, base = Path(a.raw), ML / "output" / "inject_test"
+    shutil.rmtree(base, ignore_errors=True)
+
+    # victims: users not involved in any REAL incident or watch-list entry (pool doesn't depend on the filters)
+    busy = set()
+    for f in ("incidents.json", "watchlist.json"):
+        fp = ML / "output" / f
+        if fp.exists():
+            busy |= {u for i in json.loads(fp.read_text()) for u in i["users"]}
+
+    runs = []
+    for k in range(a.seeds):
+        seed = 7 + k
+        print(f"seed {seed}: planting {a.per * 8} attacks and rerunning the pipeline on a copy...", flush=True)
+        runs.append(one_run(raw, seed, a.per, busy, base / f"seed_{seed}"))
+    df = pd.concat(runs, ignore_index=True)
+
+    per_seed = (df.groupby(["type", "difficulty", "seed"]).detected.mean().reset_index())
+    agg = (per_seed.groupby(["type", "difficulty"]).detected.agg(["mean", "min", "max"]).reset_index()
+           .rename(columns={"mean": "recall", "min": "recall_min", "max": "recall_max"}))
+    tc = df.groupby(["type", "difficulty"]).type_correct.mean().rename("type_accuracy").reset_index()
+    summary = agg.merge(tc, on=["type", "difficulty"]).round(3)
+    summary["attacks"] = a.per * a.seeds
+
+    print(f"\nB. ATTACK-INJECTION TEST  ({a.seeds} seeds x {a.per} attacks per row = {a.per * a.seeds} per row)")
+    print(f"   {'attack':22}{'difficulty':11}{'recall (mean)':>14}{'range over seeds':>18}{'right type':>12}")
     for _, r in summary.iterrows():
-        print(f"   {r.type:22}{r.difficulty:11}{r.detected:>6}/{r.attacks:<3}{r.recall:>8.0%}"
-              f"{r.type_correct:>8}/{r.attacks:<3}")
-    tot = df.detected.mean()
-    print(f"   overall: {df.detected.sum()}/{len(df)} detected ({tot:.0%}) | "
-          f"easy {df[df.difficulty == 'easy'].detected.mean():.0%} | "
-          f"stealthy {df[df.difficulty == 'stealthy'].detected.mean():.0%}")
-    missed = df[~df.detected]
-    if len(missed):
-        print("   missed (by pattern): " + "; ".join(f"{n}x {k}" for k, n in missed.note.value_counts().items()))
+        print(f"   {r.type:22}{r.difficulty:11}{r.recall:>14.0%}{f'{r.recall_min:.0%}-{r.recall_max:.0%}':>18}"
+              f"{r.type_accuracy:>12.0%}")
+    print(f"   overall: {df.detected.mean():.0%} | easy {df[df.difficulty == 'easy'].detected.mean():.0%} | "
+          f"stealthy {df[df.difficulty == 'stealthy'].detected.mean():.0%} | "
+          f"misses caused by watch-list filter: {int(df.only_on_watchlist.sum())}")
 
-    df.to_csv(work / "injection_results.csv", index=False)
-    (work / "injection_summary.json").write_text(summary.to_json(orient="records", indent=2))
-    print(f"\nsaved -> {work}/injection_results.csv, injection_summary.json, ground_truth_injected.json")
+    df.to_csv(base / "injection_results.csv", index=False)
+    (base / "injection_summary.json").write_text(summary.to_json(orient="records", indent=2))
+    print(f"\nsaved -> {base}/injection_results.csv, injection_summary.json")
 
 
 if __name__ == "__main__":

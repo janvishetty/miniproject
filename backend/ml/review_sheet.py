@@ -39,9 +39,11 @@ def main():
     p.add_argument("--out", default=str(ML / "output"))
     p.add_argument("--per", type=int, default=8, help="incidents per attack type")
     p.add_argument("--seed", type=int, default=11)
+    p.add_argument("--round", type=int, default=1,
+                   help="2 = fresh sample AFTER the noise filters: only the noisy types, excluding round-1 incidents")
     a = p.parse_args()
     out = Path(a.out)
-    sheet = out / "review_sheet.csv"
+    sheet = out / ("review_sheet.csv" if a.round == 1 else f"review_sheet_{a.round}.csv")
     if sheet.exists() and pd.read_csv(sheet)["label"].notna().any():
         raise SystemExit(f"{sheet} already has labels - not overwriting. Delete it first to draw a new sample.")
 
@@ -62,6 +64,10 @@ def main():
             "label": "", "notes": "",
         })
     df = pd.DataFrame(rows)
+    if a.round > 1:
+        seen = set(pd.read_csv(out / "review_sheet.csv").incident_id)
+        df = df[~df.incident_id.isin(seen) & df.attack_type.isin(["Suspicious Login", "Transaction Anomaly"])]
+        a.per = 10
     pieces = [g.sample(min(a.per, len(g)), random_state=a.seed) for _, g in df.groupby("attack_type")]
     sample = pd.concat(pieces).sample(frac=1, random_state=a.seed)   # shuffle so types are mixed while reviewing
     sample.to_csv(sheet, index=False)
