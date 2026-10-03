@@ -1,0 +1,301 @@
+ip_address,indicator_type,threat_level,source,description,last_seen
+5.188.177.79,IP,High,Threat feed A,Known botnet C2,2026-06-28
+89.248.165.170,IP,High,Partner bank share,Previously suspicious,2026-06-16
+223.185.204.202,IP,Low,Internal SOC,No known incidents,2026-08-17
+223.185.82.123,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-09
+77.91.125.103,IP,Medium,Internal SOC,Multiple failed logins,2026-06-27
+106.51.200.166,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-17
+110.226.1.234,IP,Low,Threat feed B,No known incidents,2026-08-02
+185.220.245.50,IP,Medium,Internal SOC,Repeated login abuse reports,2026-08-08
+41.203.180.216,IP,High,Threat feed A,Previously suspicious,2026-07-01
+194.26.39.97,IP,Medium,Internal SOC,Repeated login abuse reports,2026-08-09
+223.185.126.43,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-17
+59.95.69.37,IP,Low,Threat feed B,No known incidents,2026-08-18
+5.188.31.60,IP,High,Threat feed A,Reported in account-takeover incident,2026-07-18
+45.12.87.211,IP,High,Threat feed A,Linked to credential-stuffing campaign,2026-08-05
+193.32.122.194,IP,Medium,Threat feed B,Repeated login abuse reports,2026-08-10
+103.21.105.135,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-11
+5.188.157.211,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-07-31
+91.240.20.172,IP,High,Threat feed A,Known botnet C2,2026-08-13
+102.44.129.248,PROXY_VPN,Medium,Threat feed B,Anonymizing proxy/VPN exit,2026-06-15
+157.45.42.3,IP,Low,Internal SOC,Cloud provider range,2026-06-05
+49.207.239.68,IP,Low,Threat feed B,No known incidents,2026-08-12
+41.203.131.182,IP,Medium,Internal SOC,Repeated login abuse reports,2026-06-15
+110.226.66.249,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-08
+194.26.109.46,IP,Medium,Internal SOC,Repeated login abuse reports,2026-08-08
+110.226.175.119,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-20
+91.240.210.245,TOR_EXIT,Medium,Threat feed A,Tor exit node,2026-07-31
+103.21.176.156,IP,Low,Threat feed B,No known incidents,2026-08-13
+193.32.18.86,IP,High,Partner bank share,Previously suspicious,2026-07-16
+193.32.125.173,IP,Medium,Internal SOC,Repeated login abuse reports,2026-06-24
+49.207.92.231,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-07
+77.91.79.188,IP,Medium,Threat feed A,Multiple failed logins,2026-07-22
+157.45.122.246,IP,Low,Threat feed B,No known incidents,2026-08-24
+122.172.76.166,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-27
+89.248.83.47,IP,Medium,Internal SOC,Scanning activity reported,2026-06-03
+45.12.100.55,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-06-03
+106.51.24.127,IP,Low,Threat feed B,Cloud provider range,2026-08-08
+103.21.5.158,IP,Low,Threat feed B,No known incidents,2026-08-25
+77.91.25.101,IP,High,Threat feed A,Previously suspicious,2026-08-11
+49.36.182.69,IP,Low,Threat feed B,No known incidents,2026-08-03
+110.226.85.93,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-17
+223.185.69.161,IP,Low,Threat feed B,No known incidents,2026-08-26
+89.248.56.114,IP,High,Partner bank share,Known botnet C2,2026-08-13
+194.26.6.158,IP,Medium,Threat feed A,Scanning activity reported,2026-08-25
+223.185.90.115,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-06
+91.240.115.17,IP,High,Partner bank share,Previously suspicious,2026-07-13
+194.26.156.224,IP,Medium,Threat feed A,Repeated login abuse reports,2026-06-17
+193.32.73.97,IP,Medium,Threat feed A,Multiple failed logins,2026-08-27
+77.91.95.12,IP,High,Internal blocklist,Known botnet C2,2026-06-18
+182.69.99.22,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-19
+45.12.134.203,IP,Medium,Threat feed B,Repeated login abuse reports,2026-07-15
+182.69.15.192,IP,Low,Threat feed B,No known incidents,2026-06-03
+91.240.121.211,IP,High,Threat feed A,Known botnet C2,2026-07-16
+102.44.61.189,IP,Medium,Internal SOC,Repeated login abuse reports,2026-07-19
+117.200.26.97,IP,Low,Internal SOC,No known incidents,2026-08-17
+49.207.36.206,IP,Low,Threat feed B,Cloud provider range,2026-07-09
+185.220.18.199,PROXY_VPN,Medium,Threat feed A,Anonymizing proxy/VPN exit,2026-08-13
+182.69.152.179,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-04
+194.26.130.12,IP,High,Partner bank share,Reported in account-takeover incident,2026-08-02
+110.226.29.246,IP,Low,Threat feed B,No known incidents,2026-08-15
+59.95.230.12,IP,Low,Threat feed B,No known incidents,2026-07-08
+110.226.197.184,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-26
+122.172.209.3,IP,Low,Internal SOC,No known incidents,2026-07-27
+193.32.109.130,IP,Medium,Threat feed A,Repeated login abuse reports,2026-07-08
+49.36.148.94,IP,Low,Internal SOC,No known incidents,2026-08-22
+49.207.193.196,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-13
+5.188.227.10,TOR_EXIT,Medium,Internal SOC,Tor exit node,2026-08-05
+5.188.131.164,IP,High,Internal blocklist,Reported in account-takeover incident,2026-07-08
+41.203.144.161,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-08-29
+59.95.110.63,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-11
+89.248.151.181,IP,Medium,Threat feed A,Multiple failed logins,2026-08-19
+89.248.169.63,IP,High,Internal blocklist,Linked to credential-stuffing campaign,2026-07-13
+110.226.242.227,IP,Low,Internal SOC,No known incidents,2026-07-28
+157.45.223.249,IP,Low,Threat feed B,Cloud provider range,2026-08-19
+182.69.122.181,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-28
+103.21.110.167,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-06-08
+77.91.26.46,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-08-18
+91.240.44.215,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-06-26
+41.203.116.159,PROXY_VPN,Medium,Threat feed B,Anonymizing proxy/VPN exit,2026-06-13
+122.172.94.129,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-07
+182.69.108.141,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-18
+45.12.17.223,IP,Medium,Threat feed A,Repeated login abuse reports,2026-08-19
+27.58.165.251,IP,Low,Threat feed B,No known incidents,2026-06-24
+41.203.45.163,IP,High,Internal blocklist,Linked to credential-stuffing campaign,2026-08-06
+194.26.196.112,IP,Medium,Internal SOC,Multiple failed logins,2026-07-15
+91.240.7.155,IP,Medium,Internal SOC,Repeated login abuse reports,2026-07-12
+49.207.84.22,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-14
+89.248.107.168,IP,Medium,Threat feed B,Repeated login abuse reports,2026-08-25
+49.36.196.225,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-14
+77.91.110.87,IP,Medium,Threat feed A,Repeated login abuse reports,2026-08-09
+193.32.161.234,IP,Medium,Threat feed A,Multiple failed logins,2026-08-10
+77.91.203.253,IP,Medium,Threat feed A,Repeated login abuse reports,2026-07-08
+103.21.230.157,IP,Low,Internal SOC,Cloud provider range,2026-08-24
+185.220.244.249,IP,Medium,Threat feed B,Repeated login abuse reports,2026-08-27
+193.32.104.237,IP,Medium,Threat feed B,Scanning activity reported,2026-07-14
+182.69.150.99,IP,Low,Threat feed B,No known incidents,2026-08-15
+194.26.227.223,IP,High,Threat feed A,Reported in account-takeover incident,2026-07-27
+102.44.226.161,IP,High,Internal blocklist,Known botnet C2,2026-06-07
+27.58.206.96,IP,Low,Internal SOC,No known incidents,2026-07-28
+41.203.207.26,IP,Medium,Threat feed A,Repeated login abuse reports,2026-07-25
+41.203.8.150,IP,Medium,Threat feed A,Repeated login abuse reports,2026-07-01
+122.172.111.48,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-06
+157.45.189.210,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-21
+103.21.159.15,IP,Low,Threat feed B,Cloud provider range,2026-08-08
+185.220.195.233,IP,Medium,Internal SOC,Multiple failed logins,2026-06-30
+157.45.128.138,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-24
+49.207.75.93,IP,Low,Internal SOC,No known incidents,2026-06-05
+41.203.171.103,TOR_EXIT,Medium,Threat feed B,Tor exit node,2026-07-14
+193.32.223.179,IP,Medium,Threat feed B,Scanning activity reported,2026-08-04
+193.32.47.129,IP,Medium,Threat feed B,Scanning activity reported,2026-06-28
+103.21.62.54,IP,Low,Threat feed B,No known incidents,2026-06-20
+59.95.129.207,IP,Low,Threat feed B,No known incidents,2026-06-17
+49.36.53.48,IP,Low,Threat feed B,No known incidents,2026-06-19
+45.12.16.69,IP,Medium,Threat feed A,Scanning activity reported,2026-06-14
+122.172.191.155,IP,Low,Threat feed B,No known incidents,2026-06-17
+182.69.57.87,IP,Low,Internal SOC,Cloud provider range,2026-08-24
+77.91.234.150,IP,High,Partner bank share,Previously suspicious,2026-06-06
+102.44.30.182,IP,High,Internal blocklist,Previously suspicious,2026-06-19
+193.32.106.196,IP,High,Internal blocklist,Reported in account-takeover incident,2026-08-20
+110.226.89.129,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-01
+59.95.186.135,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-30
+122.172.210.49,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-05
+182.69.137.185,IP,Low,Threat feed B,No known incidents,2026-08-15
+59.95.1.167,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-15
+102.44.155.117,IP,Medium,Threat feed B,Scanning activity reported,2026-08-13
+27.58.62.73,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-18
+49.207.193.101,IP,Low,Internal SOC,No known incidents,2026-06-03
+194.26.106.78,IP,High,Internal blocklist,Known botnet C2,2026-07-04
+45.12.179.171,IP,Medium,Threat feed B,Multiple failed logins,2026-06-11
+49.36.92.20,IP,Low,Internal SOC,No known incidents,2026-07-16
+103.21.123.151,IP,Low,Threat feed B,Cloud provider range,2026-08-11
+102.44.40.113,IP,High,Threat feed A,Linked to credential-stuffing campaign,2026-06-29
+5.188.32.71,IP,Medium,Threat feed A,Scanning activity reported,2026-07-08
+194.26.130.21,IP,Medium,Internal SOC,Repeated login abuse reports,2026-06-09
+185.220.45.152,IP,Medium,Internal SOC,Repeated login abuse reports,2026-06-30
+59.95.27.20,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-20
+194.26.40.235,IP,Medium,Internal SOC,Multiple failed logins,2026-07-17
+45.12.4.221,IP,Medium,Internal SOC,Repeated login abuse reports,2026-07-08
+103.21.188.209,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-14
+117.200.47.49,IP,Low,Threat feed B,No known incidents,2026-08-16
+106.51.81.168,IP,Low,Internal SOC,Cloud provider range,2026-08-10
+182.69.82.230,IP,Low,Threat feed B,No known incidents,2026-08-26
+45.12.163.93,IP,Medium,Internal SOC,Scanning activity reported,2026-08-08
+5.188.249.191,IP,Medium,Threat feed B,Multiple failed logins,2026-07-04
+106.51.72.233,IP,Low,Threat feed B,Cloud provider range,2026-08-08
+59.95.123.215,IP,Low,Threat feed B,No known incidents,2026-08-13
+223.185.60.227,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-09
+45.12.103.168,IP,High,Partner bank share,Known botnet C2,2026-07-26
+49.207.93.218,IP,Low,Threat feed B,Cloud provider range,2026-07-04
+106.51.44.254,IP,Low,Threat feed B,No known incidents,2026-08-18
+193.32.119.18,IP,High,Threat feed A,Previously suspicious,2026-07-23
+49.207.116.129,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-11
+27.58.13.81,IP,Low,Threat feed B,Cloud provider range,2026-08-30
+91.240.56.183,IP,High,Partner bank share,Reported in account-takeover incident,2026-08-13
+110.226.49.146,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-08
+193.32.71.52,IP,High,Threat feed A,Reported in account-takeover incident,2026-07-02
+185.220.55.134,PROXY_VPN,Medium,Threat feed B,Anonymizing proxy/VPN exit,2026-07-31
+41.203.35.72,IP,Medium,Internal SOC,Scanning activity reported,2026-07-14
+193.32.9.236,IP,Medium,Threat feed A,Repeated login abuse reports,2026-06-05
+157.45.86.154,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-08
+157.45.48.141,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-12
+91.240.21.76,IP,Medium,Internal SOC,Multiple failed logins,2026-07-26
+49.36.37.185,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-20
+91.240.209.126,IP,Medium,Internal SOC,Multiple failed logins,2026-06-27
+41.203.233.62,IP,High,Internal blocklist,Reported in account-takeover incident,2026-07-25
+77.91.226.126,IP,High,Partner bank share,Previously suspicious,2026-08-15
+182.69.36.123,IP,Low,Internal SOC,No known incidents,2026-07-23
+194.26.70.221,IP,Medium,Threat feed A,Repeated login abuse reports,2026-06-09
+223.185.87.114,IP,Low,Threat feed B,Cloud provider range,2026-08-17
+49.36.196.14,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-31
+223.185.250.144,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-03
+122.172.51.243,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-28
+45.12.19.164,IP,High,Internal blocklist,Known botnet C2,2026-08-17
+49.207.225.27,IP,Low,Internal SOC,Cloud provider range,2026-06-08
+122.172.75.30,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-06
+89.248.72.244,IP,Medium,Internal SOC,Scanning activity reported,2026-06-27
+77.91.207.64,IP,High,Threat feed A,Linked to credential-stuffing campaign,2026-08-13
+5.188.239.145,IP,Medium,Threat feed B,Repeated login abuse reports,2026-06-11
+122.172.128.25,IP,Low,Threat feed B,No known incidents,2026-07-23
+106.51.22.195,IP,Low,Internal SOC,No known incidents,2026-06-13
+102.44.98.119,IP,Medium,Internal SOC,Multiple failed logins,2026-08-19
+91.240.213.110,IP,Medium,Internal SOC,Scanning activity reported,2026-06-19
+117.200.213.209,IP,Low,Internal SOC,No known incidents,2026-08-08
+185.220.57.246,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-06-03
+223.185.3.112,IP,Low,Internal SOC,Cloud provider range,2026-07-26
+41.203.81.210,IP,Medium,Internal SOC,Multiple failed logins,2026-07-17
+182.69.187.186,IP,Low,Internal SOC,Cloud provider range,2026-08-13
+193.32.146.209,IP,Medium,Internal SOC,Scanning activity reported,2026-08-02
+49.207.115.162,IP,Low,Threat feed B,Cloud provider range,2026-08-23
+77.91.138.40,IP,Medium,Threat feed B,Repeated login abuse reports,2026-06-15
+194.26.17.169,IP,High,Partner bank share,Reported in account-takeover incident,2026-08-19
+122.172.25.85,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-28
+49.36.182.59,IP,Low,Internal SOC,No known incidents,2026-07-28
+49.207.33.47,IP,Low,Internal SOC,Cloud provider range,2026-07-22
+5.188.102.181,PROXY_VPN,Medium,Threat feed A,Anonymizing proxy/VPN exit,2026-06-25
+41.203.172.192,IP,High,Threat feed A,Linked to credential-stuffing campaign,2026-07-22
+122.172.163.155,IP,Low,Threat feed B,Cloud provider range,2026-08-03
+106.51.191.36,IP,Low,Internal SOC,Cloud provider range,2026-07-10
+110.226.182.198,IP,Low,Internal SOC,Cloud provider range,2026-07-02
+59.95.108.126,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-15
+117.200.28.185,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-30
+59.95.251.146,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-01
+102.44.64.155,PROXY_VPN,Medium,Threat feed B,Anonymizing proxy/VPN exit,2026-08-30
+91.240.69.192,PROXY_VPN,Medium,Internal SOC,Anonymizing proxy/VPN exit,2026-06-22
+110.226.103.10,IP,Low,Internal SOC,No known incidents,2026-08-13
+91.240.241.53,IP,Medium,Threat feed A,Repeated login abuse reports,2026-07-12
+106.51.81.44,IP,Low,Internal SOC,No known incidents,2026-08-23
+5.188.189.64,IP,Medium,Threat feed A,Repeated login abuse reports,2026-08-22
+41.203.88.63,IP,Medium,Internal SOC,Repeated login abuse reports,2026-08-03
+5.188.116.43,IP,High,Threat feed A,Reported in account-takeover incident,2026-07-14
+45.12.154.2,IP,High,Partner bank share,Previously suspicious,2026-07-27
+157.45.52.164,IP,Low,Threat feed B,No known incidents,2026-07-28
+77.91.54.240,IP,High,Partner bank share,Reported in account-takeover incident,2026-07-19
+157.45.143.68,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-07-26
+91.240.96.128,IP,Medium,Threat feed A,Multiple failed logins,2026-07-12
+102.44.193.7,IP,Medium,Threat feed A,Multiple failed logins,2026-08-16
+45.12.30.198,IP,Medium,Threat feed B,Multiple failed logins,2026-08-18
+27.58.174.213,IP,Low,Internal SOC,Cloud provider range,2026-06-16
+157.45.155.96,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-27
+102.44.166.226,IP,High,Partner bank share,Reported in account-takeover incident,2026-08-10
+182.69.93.1,IP,Low,Threat feed B,No known incidents,2026-07-16
+185.220.179.186,IP,High,Threat feed A,Previously suspicious,2026-06-07
+49.207.123.40,IP,Low,Threat feed B,No known incidents,2026-06-23
+110.226.229.171,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-26
+89.248.233.49,PROXY_VPN,Medium,Internal SOC,Anonymizing proxy/VPN exit,2026-06-30
+106.51.108.135,IP,Low,Threat feed B,No known incidents,2026-06-16
+49.207.193.73,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-07
+157.45.99.144,IP,Low,Internal SOC,Cloud provider range,2026-06-15
+41.203.20.194,IP,High,Partner bank share,Known botnet C2,2026-08-03
+5.188.126.79,IP,Medium,Internal SOC,Scanning activity reported,2026-07-08
+110.226.16.226,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-09
+103.21.82.18,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-11
+5.188.64.46,IP,High,Internal blocklist,Linked to credential-stuffing campaign,2026-06-08
+89.248.106.170,PROXY_VPN,Medium,Threat feed B,Anonymizing proxy/VPN exit,2026-08-31
+106.51.109.124,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-11
+122.172.38.82,IP,Low,Threat feed B,Cloud provider range,2026-07-05
+223.185.139.80,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-26
+106.51.142.183,IP,Low,Internal SOC,"Previously flagged, cleared",2026-06-28
+5.188.44.46,TOR_EXIT,Medium,Threat feed B,Tor exit node,2026-07-31
+185.220.5.108,IP,High,Partner bank share,Reported in account-takeover incident,2026-08-24
+77.91.15.250,IP,Medium,Threat feed B,Multiple failed logins,2026-06-06
+193.32.99.234,IP,High,Partner bank share,Previously suspicious,2026-08-18
+5.188.179.79,IP,Medium,Threat feed B,Scanning activity reported,2026-06-17
+89.248.14.233,IP,Medium,Internal SOC,Repeated login abuse reports,2026-07-01
+59.95.55.153,IP,Low,Threat feed B,Cloud provider range,2026-08-07
+91.240.181.35,IP,Medium,Internal SOC,Scanning activity reported,2026-07-04
+27.58.14.170,IP,Low,Internal SOC,No known incidents,2026-07-26
+59.95.222.68,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-08
+102.44.246.25,IP,High,Internal blocklist,Reported in account-takeover incident,2026-06-03
+91.240.52.16,IP,Medium,Threat feed B,Multiple failed logins,2026-07-10
+106.51.211.9,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-14
+45.12.196.98,IP,Medium,Threat feed B,Repeated login abuse reports,2026-06-08
+59.95.134.97,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-04
+89.248.197.200,IP,High,Partner bank share,Previously suspicious,2026-06-10
+5.188.97.43,IP,Medium,Internal SOC,Multiple failed logins,2026-07-24
+223.185.208.192,IP,Low,Threat feed B,"Previously flagged, cleared",2026-08-20
+41.203.179.15,IP,Medium,Threat feed B,Multiple failed logins,2026-07-07
+49.207.69.53,IP,Low,Internal SOC,No known incidents,2026-07-05
+49.36.179.248,IP,Low,Threat feed B,Cloud provider range,2026-08-26
+223.185.37.97,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-08
+185.220.86.35,IP,Medium,Threat feed A,Scanning activity reported,2026-08-14
+5.188.132.28,IP,High,Threat feed A,Reported in account-takeover incident,2026-07-24
+5.188.174.237,IP,High,Threat feed A,Known botnet C2,2026-08-13
+49.207.37.21,IP,Low,Threat feed B,No known incidents,2026-08-30
+182.69.236.226,IP,Low,Internal SOC,"Previously flagged, cleared",2026-08-17
+103.21.99.38,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-26
+110.226.187.131,IP,Low,Threat feed B,No known incidents,2026-07-27
+185.220.92.83,IP,High,Threat feed A,Reported in account-takeover incident,2026-08-22
+59.95.140.76,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-09
+59.95.20.242,IP,Low,Internal SOC,Cloud provider range,2026-07-02
+185.220.28.163,TOR_EXIT,Medium,Threat feed A,Tor exit node,2026-07-18
+5.188.197.52,IP,High,Partner bank share,Reported in account-takeover incident,2026-06-12
+117.200.16.204,IP,Low,Threat feed B,"Previously flagged, cleared",2026-07-12
+102.44.74.148,IP,Medium,Threat feed B,Scanning activity reported,2026-08-16
+59.95.25.172,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-22
+41.203.174.114,IP,Medium,Threat feed A,Multiple failed logins,2026-07-07
+185.220.183.138,IP,High,Partner bank share,Linked to credential-stuffing campaign,2026-06-19
+193.32.80.43,IP,Medium,Internal SOC,Multiple failed logins,2026-08-16
+193.32.148.11,IP,High,Threat feed A,Previously suspicious,2026-07-24
+194.26.67.252,PROXY_VPN,Medium,Internal SOC,Anonymizing proxy/VPN exit,2026-08-21
+185.220.137.190,IP,High,Threat feed A,Previously suspicious,2026-06-24
+194.26.102.10,IP,High,Internal blocklist,Known botnet C2,2026-06-17
+5.188.155.134,TOR_EXIT,Medium,Internal SOC,Tor exit node,2026-06-05
+27.58.196.213,IP,Low,Threat feed B,No known incidents,2026-07-31
+110.226.214.219,IP,Low,Internal SOC,No known incidents,2026-08-05
+27.58.137.61,IP,Low,Internal SOC,No known incidents,2026-06-11
+91.240.186.43,IP,High,Partner bank share,Previously suspicious,2026-08-09
+49.36.243.126,IP,Low,Internal SOC,Cloud provider range,2026-07-24
+157.45.24.147,IP,Low,ISP range list,Shared ISP NAT range - no known incidents,2026-08-17
+49.207.14.180,IP,Low,Threat feed B,"Previously flagged, cleared",2026-06-18
+49.36.94.72,IP,Low,Internal SOC,"Previously flagged, cleared",2026-07-09
+122.172.73.6,IP,Low,Internal SOC,No known incidents,2026-08-09
+45.12.61.237,IP,Medium,Internal SOC,Scanning activity reported,2026-06-07
+157.45.182.185,IP,Low,Internal SOC,Cloud provider range,2026-08-03
+106.51.176.137,IP,Low,Threat feed B,No known incidents,2026-07-06
+45.12.253.164,IP,Medium,Threat feed B,Scanning activity reported,2026-07-17
+157.45.110.165,IP,Low,Threat feed B,Cloud provider range,2026-08-17
+5.188.88.191,IP,High,Threat feed A,Previously suspicious,2026-08-17
+117.200.110.246,IP,Low,Internal SOC,No known incidents,2026-08-20
+223.185.156.167,IP,Low,Internal SOC,Cloud provider range,2026-08-15
+194.26.159.21,IP,Medium,Internal SOC,Multiple failed logins,2026-07-11
