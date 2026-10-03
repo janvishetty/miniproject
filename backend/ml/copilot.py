@@ -52,7 +52,8 @@ Rules:
   after your answer, per incident. Do not invent tools, patches, people or deadlines.
 - Never mix incidents: a user, IP or transaction belongs only to the incident it is listed under in FACTS.
 - If FACTS say NO transfers or NO successful logins for an incident, do not claim otherwise.
-- Light markdown is fine (**bold**, short lists). Respond with JSON only: {{"answer": "<markdown>"}}
+- Write the answer itself in plain sentences or a short list (light markdown: **bold**, bullets).
+  Never output JSON, code, or a copy of the FACTS. Keep it under about 150 words.
 
 {mode}
 QUESTION: {question}
@@ -63,6 +64,33 @@ FACTS:
 RETRY = """
 Your previous answer had these problems: {problems}
 Answer again using only the FACTS, citing only the incident IDs given there."""
+
+
+def ask_text(prompt, temperature=0.1, timeout=180):
+    """Plain-text generation (no JSON mode): the copilot's answer is just markdown for the chat."""
+    import urllib.request
+    body = json.dumps({"model": S.MODEL, "prompt": prompt, "stream": False,
+                       "options": {"temperature": temperature, "num_predict": 350}}).encode()
+    req = urllib.request.Request(S.OLLAMA_URL, data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())["response"]
+
+
+def readability_problems(text):
+    """Reject non-answers: JSON/code dumps, copied fact blocks, cut-off or overlong text."""
+    p, t = [], text.strip()
+    if not t:
+        return ["empty answer"]
+    if t[:1] in "{[" or "```" in t or re.search(r'"\w+"\s*:\s*[\[{"\d]', t):
+        p.append("not a readable answer (JSON/code instead of prose)")
+    if re.search(r"\[(?:Auth Service|Payments API|Threat Intel|AI Engine)\]|^\s*(?:Who|What|When|Where):", t, re.M):
+        p.append("copied raw fact lines instead of answering")
+    if len(t.split()) > 260:
+        p.append(f"too long ({len(t.split())} words)")
+    dangling = re.search(r"\b(?:to|and|or|the|of|from|with|a|an|for|at|by|in|on|via|than|then)\s*$", t, re.I)
+    if t[-1] in ',:;([{"\'-' or t.count("(") > t.count(")") or t.count("**") % 2 or dangling:
+        p.append("answer is cut off mid-sentence")
+    return p
 
 
 def load():
@@ -302,13 +330,13 @@ def answer(question, max_attempts=3):
     attempts, best = [], None
     for k in range(1, max_attempts + 1):
         p = prompt if k == 1 else prompt + RETRY.format(problems="; ".join(best["grounding"]["unverified"]))
-        raw = S.ask_ollama(p, temperature=0.1 if k == 1 else 0.4)
-        try:
-            text = str(json.loads(raw).get("answer", "")).strip()
-        except (json.JSONDecodeError, AttributeError):
-            text = raw.strip()
+        text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
-        g = check(text, facts, sel) if text else {"grounded": False, "unverified": ["empty answer"], "checked": 0}
+        g = check(text, facts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        rp = readability_problems(text)
+        if rp:
+            g["unverified"] = sorted(g["unverified"] + rp)
+            g["grounded"] = False
         attempts.append({"attempt": k, "grounded": g["grounded"], "problems": g["unverified"]})
         if best is None or len(g["unverified"]) < len(best["grounding"]["unverified"]):
             best = {"text": text, "grounding": g}
