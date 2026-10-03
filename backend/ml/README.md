@@ -1,4 +1,4 @@
-# Sentra AI/ML module (`backend/ml/`)
+# AI/ML module (`backend/ml/`)
 
 Detects attacks in the FinTech logs, groups them into incidents, explains why each was flagged, and writes
 verified incident reports and Copilot answers with a local LLM. Everything runs on the laptop: no cloud APIs.
