@@ -135,7 +135,9 @@ def rankings(sel):
     when = sorted(sel, key=lambda i: i["start"])
     return ("RANKINGS (use these for any comparison)\n"
             "By money moved, most first: " + " > ".join(f"{i['id']} ₹{i['amount_total']:,.0f}" for i in money) + "\n"
-            "By start time, earliest first: " + " > ".join(f"{i['id']} {i['start'][:16].replace('T', ' ')}" for i in when))
+            "By start time, earliest first: " + " > ".join(f"{i['id']} {i['start'][:16].replace('T', ' ')}" for i in when) + "\n"
+            "By model confidence, highest first: " + " > ".join(f"{i['id']} {i['confidence']}" for i in
+                                                                 sorted(sel, key=lambda i: -i["confidence"])))
 
 
 def facts_for(sel, reports, incidents, with_stats, why=()):
@@ -218,13 +220,23 @@ def check(text, facts, sel, llm=True):
         top_money = max(sel, key=lambda i: i["amount_total"])["id"]
         first = min(sel, key=lambda i: i["start"])["id"]
         last = max(sel, key=lambda i: i["start"])["id"]
+        last = []
         for sent in re.split(r"(?<=[.;!?])\s+|\n+", text):
             named = re.findall(r"\bINC-\d{4}-\d{4}\b", sent)
+            if not named and last and re.search(r"\b(?:this|that|the same|it)\b", sent, re.I):
+                named = last          # "This incident also has..." refers back to the last one named
             if not named:
                 continue
+            last = named
             if re.search(r"\b(?:highest|largest|biggest|most|greatest|maximum)\b[^.]{0,30}\b(?:amount|money|loss|value|₹)", sent, re.I) \
                     and top_money not in named:
                 extra_p.append(f"wrong superlative: most money moved is {top_money}, not {', '.join(named)}")
+            for field, words in (("confidence", r"confidence"), ("impact", r"impact"), ("risk_score", r"risk")):
+                if re.search(rf"\b(?:highest|most|greatest|maximum|top)\b[^.]{{0,25}}\b{words}", sent, re.I):
+                    best = max(i[field] for i in sel)
+                    top = {i["id"] for i in sel if i[field] == best}
+                    if not set(named) & top:
+                        extra_p.append(f"wrong superlative: highest {field.replace('_', ' ')} is {', '.join(sorted(top))}")
             if re.search(r"\bearliest|first to (?:occur|happen)|\boldest\b", sent, re.I) and first not in named:
                 extra_p.append(f"wrong superlative: earliest is {first}, not {', '.join(named)}")
             if re.search(r"\blatest\b|\bmost recent\b", sent, re.I) and last not in named:
@@ -248,6 +260,8 @@ def check(text, facts, sel, llm=True):
     ok_n = {str(len(sel))} | set(re.findall(r"Total incidents: (\d+)", facts)) | \
            set(re.findall(r"(?:critical|high|medium|low|Takeover|Stuffing|Force|Anomaly|Login) (\d+)", facts))
     for m in re.finditer(r"(?<![\d.,₹])\b(\d+)\*{0,2} (?:\w+ ){0,2}incidents?\b", text):
+        if re.search(r"\b(?:types?|kinds?|categories|classes)\b", m.group(0), re.I):
+            continue
         if m.group(1) not in ok_n:
             extra_p.append(f'wrong incident count: "{m.group(0)}"')
     if re.search(r"\b(?:\d+|five|four|three) (?:incident )?types?\b", text) is None and \
@@ -257,7 +271,8 @@ def check(text, facts, sel, llm=True):
     counts = {v: n for v, n in re.findall(r"(Account Takeover|Credential Stuffing|Brute Force|Transaction Anomaly|"
                                           r"Suspicious Login) (\d+)", facts)}
     for v, n in counts.items():
-        for m in re.finditer(rf"{v}s?[ ]?[:=-]?[ ]?(\d+)(?![.\d])|\b(\d+)[ ]+{v}", text, re.I):
+        for m in re.finditer(rf"{v}s?\**[ ]?[:=-]?[ ]?\**(\d+)\**(?=[ ]*(?:incidents?\b|[,;)\n]|\.(?!\d)|$))|"
+                             rf"\b(\d+)\**[ ]+{v}", text, re.I):
             got = m.group(1) or m.group(2)
             if got != n:
                 extra_p.append(f'wrong count for {v}: {got} (data: {n})')
