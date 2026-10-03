@@ -52,8 +52,9 @@ Rules:
   after your answer, per incident. Do not invent tools, patches, people or deadlines.
 - Never mix incidents: a user, IP or transaction belongs only to the incident it is listed under in FACTS.
 - If FACTS say NO transfers or NO successful logins for an incident, do not claim otherwise.
-- Write the answer itself in plain sentences or a short list (light markdown: **bold**, bullets).
-  Never output JSON, code, or a copy of the FACTS. Keep it under about 150 words.
+- Write 2-5 plain sentences (a short bullet list only when listing several incidents, one line each).
+  No headings, no "Field: value" lines, no JSON or code, no copying of FACTS lines. Under about 120 words.
+- Nothing has been done yet: never say an IP "was blocked", an account "was locked" or money "was frozen".
 
 {mode}
 QUESTION: {question}
@@ -85,6 +86,12 @@ def readability_problems(text):
         p.append("not a readable answer (JSON/code instead of prose)")
     if re.search(r"\[(?:Auth Service|Payments API|Threat Intel|AI Engine)\]|^\s*(?:Who|What|When|Where):", t, re.M):
         p.append("copied raw fact lines instead of answering")
+    if re.search(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.?\s*$", t):
+        p.append("answer is cut off mid-sentence (incomplete IP)")
+    fields = re.findall(r"^\s*[*\-]?\s*\**(?:Who|What|When|Where|Accounts involved|Source IPs?|Transaction ID|Amount|"
+                        r"Model Confidence|Impact|Severity|Location|Time|User IDs?|IP|Incident ID)\**\s*:", t, re.M | re.I)
+    if len(fields) >= 3:
+        p.append("copied fact fields (Field: value lines) instead of answering in prose")
     if len(t.split()) > 260:
         p.append(f"too long ({len(t.split())} words)")
     dangling = re.search(r"\b(?:to|and|or|the|of|from|with|a|an|for|at|by|in|on|via|than|then)\s*$", t, re.I)
@@ -168,17 +175,25 @@ def rankings(sel):
                                                                  sorted(sel, key=lambda i: -i["confidence"])))
 
 
-def facts_for(sel, reports, incidents, with_stats, why=()):
+def facts_for(sel, reports, incidents, with_stats, why=(), full=False):
     parts = [f"NOT IN THE DATA: {w.split(': ', 1)[1]} - no incident involves this" for w in why if w.startswith("not found")]
     if rankings(sel):
         parts.append(rankings(sel))
     if with_stats:
         parts.append("OVERVIEW\n" + stats_block(incidents))
+    compact = len(sel) >= 3 and not full
+    if compact:
+        parts.append("INCIDENTS (one line each)")
     for i in sel:
-        block = S.facts_block(i)
-        block += "\nContainment: " + " | ".join(S.containment_actions(i))
+        if compact:
+            loc = next((o["location"] for o in i.get("sequence", {}).get("successful_logins", [])), "")
+            parts.append(f"- {i['id']} | {i['vector']} | {i['sev']} | users {', '.join(i['users'])} | IP {', '.join(i['ips'][:2])}"
+                         f"{' (' + loc + ')' if loc else ''} | ₹{i['amount_total']:,.0f} moved | {i['start'][:10]} | "
+                         + S.sequence_line(i))
+            continue
+        block = S.facts_block(i) + "\nAll users in this incident: " + ", ".join(i["users"])
         r = reports.get(i["id"])
-        if r and r.get("grounding", {}).get("grounded"):
+        if r and r.get("grounding", {}).get("grounded") and not compact:
             block += f"\nVerified report summary: {r['summary']}"
         parts.append(block)
     return "\n\n".join(parts)
@@ -295,6 +310,13 @@ def check(text, facts, sel, llm=True):
     if re.search(r"\b(?:\d+|five|four|three) (?:incident )?types?\b", text) is None and \
             re.search(r"\bincidents by type\b", text, re.I) and re.search(r"\*{0,2}\d+\*{0,2} incidents by type", text):
         extra_p.append("calls the number of types a number of incidents")
+    WN = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+    for m in re.finditer(r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\w+\s+){0,2}incidents?\b", text, re.I):
+        if not re.search(r"\b(?:types?|kinds?|categories)\b", m.group(0), re.I) and str(WN[m.group(1).lower()]) not in ok_n:
+            extra_p.append(f'wrong incident count: "{m.group(0)}"')
+    if llm and re.search(r"\b(?:was|were|has been|have been|is now|are now)\s+(?:\w+\s+)?(?:blocked|locked|frozen|"
+                         r"recalled|revoked|reset|contained|suspended|rate-limited)\b", text, re.I):
+        extra_p.append("claims actions were already taken (they are only recommended)")
     # a count next to an attack type must equal the real number of incidents of that type
     counts = {v: n for v, n in re.findall(r"(Account Takeover|Credential Stuffing|Brute Force|Transaction Anomaly|"
                                           r"Suspicious Login) (\d+)", facts)}
@@ -320,7 +342,8 @@ def answer(question, max_attempts=3):
     t0 = time.time()
     incidents, reports = load()
     sel, why, with_stats = retrieve(question, incidents)
-    facts = facts_for(sel, reports, incidents, with_stats, why)
+    facts = facts_for(sel, reports, incidents, with_stats, why)               # what the model sees
+    vfacts = facts_for(sel, reports, incidents, with_stats, why, full=True)   # what claims are checked against
     action_q = bool(re.search(r"\bremediat\w*|\bcontain\w*|\bmitigat\w*|\bplan\b|\bwhat (?:should|do) we do\b|"
                               r"\bnext steps?\b|\brespond\w*|\bfix\b", question.lower()))
     mode = ("- This is a remediation question: the per-incident steps are added automatically below your answer. Write\n"
@@ -332,7 +355,7 @@ def answer(question, max_attempts=3):
         p = prompt if k == 1 else prompt + RETRY.format(problems="; ".join(best["grounding"]["unverified"]))
         text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
-        g = check(text, facts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        g = check(text, vfacts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
         rp = readability_problems(text)
         if rp:
             g["unverified"] = sorted(g["unverified"] + rp)
@@ -346,7 +369,7 @@ def answer(question, max_attempts=3):
         src, text = ("llm" if len(attempts) == 1 else "llm_corrected"), best["text"]
     else:
         src, text = "facts", fallback(sel, incidents, with_stats, why)
-        best["grounding"] = check(text, facts, sel, llm=False)
+        best["grounding"] = check(text, vfacts, sel, llm=False)
     text += containment_section(sel)            # actions always come from code, grouped per incident
     return {"question": question, "answer": text, "incidents": [i["id"] for i in sel], "retrieved_by": why,
             "source": src, "grounding": best["grounding"], "attempts": attempts,
