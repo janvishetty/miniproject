@@ -127,7 +127,9 @@ def main():
         return {"by_type": rows, "unsure": int((rv.label == "unsure").sum())}
 
     print("\nC. ANALYST REVIEW (precision on random stratified samples)")
-    r1 = review(out / "review_sheet.csv", pop_before, "round 1 - BEFORE noise filters:")
+    docs = Path(__file__).resolve().parents[2] / "docs"     # labelled copies are committed here
+    pick = lambda name, saved: out / name if (out / name).exists() else docs / saved
+    r1 = review(pick("review_sheet.csv", "review_sheet_labelled.csv"), pop_before, "round 1 - BEFORE noise filters:")
     if r1 is None:
         print("   no labels yet -> python backend/ml/review_sheet.py, fill the `label` column, rerun evaluate.py")
     else:
@@ -135,7 +137,8 @@ def main():
         print(f"     weighted precision: {w1:.0%}  over {int(pop_before.sum())} incidents (unsure: {r1['unsure']})")
         r1["weighted_precision"] = round(w1, 3)
         result["review_round1_before_filters"] = r1
-        r2 = review(out / "review_sheet_2.csv", pop_after, "round 2 - fresh sample AFTER noise filters (noisy types only):")
+        r2 = review(pick("review_sheet_2.csv", "review_sheet_2_labelled.csv"), pop_after,
+                    "round 2 - fresh sample AFTER noise filters (noisy types only):")
         if r2 is None:
             print("   round 2 not labelled yet -> python backend/ml/review_sheet.py --round 2")
         else:

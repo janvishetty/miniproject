@@ -89,7 +89,7 @@ def readability_problems(text):
         p.append("not a readable answer (JSON/code instead of prose)")
     if re.search(r"\[(?:Auth Service|Payments API|Threat Intel|AI Engine)\]|^\s*(?:Who|What|When|Where):", t, re.M):
         p.append("copied raw fact lines instead of answering")
-    if re.search(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.?\s*$", t):
+    if re.search(r"(?<![\d.])\d{1,3}\.\d{1,3}\.\d{1,3}\.?\s*$", t):   # 3 octets only, not the tail of a full IP
         p.append("answer is cut off mid-sentence (incomplete IP)")
     fields = re.findall(r"^\s*[*\-]?\s*\**(?:Who|What|When|Where|Accounts involved|Source IPs?|Transaction ID|Amount|"
                         r"Model Confidence|Impact|Severity|Location|Time|User IDs?|IP|Incident ID)\**\s*:", t, re.M | re.I)

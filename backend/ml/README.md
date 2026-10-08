@@ -9,6 +9,8 @@ Owner: Janvi (AI/ML). This README is the handoff for the backend (FastAPI) and t
 
 ## 1. Setup (once)
 
+Needs **Python 3.11 or newer** (check with `python3 --version`); pandas 3 does not install on 3.10.
+
 ```bash
 cd miniproject
 python3 -m venv .venv

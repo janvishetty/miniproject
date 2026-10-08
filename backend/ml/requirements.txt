@@ -1,5 +1,6 @@
-pandas
-numpy
-scikit-learn
-shap
-joblib
+# tested with Python 3.11+ (pandas 3 needs it)
+pandas==3.0.6
+numpy==2.5.3
+scikit-learn==1.9.1
+shap==0.52.0
+joblib==1.6.0
