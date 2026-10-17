@@ -19,6 +19,7 @@ Run (from repo root, with `ollama serve` running):
 """
 import argparse
 import json
+import os
 import re
 import time
 import urllib.error
@@ -26,7 +27,7 @@ import urllib.request
 from pathlib import Path
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "llama3.2:3b"
+MODEL = os.environ.get("SENTRA_LLM", "llama3.2:3b")   # try another Ollama model: SENTRA_LLM=qwen2.5:7b
 
 # Mapping done in code, not by the LLM, so it can't be hallucinated
 MITRE = {
