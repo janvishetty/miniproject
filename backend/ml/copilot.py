@@ -495,9 +495,11 @@ def premise_notes(question, sel):
             notes.append(f"Note: {i['id']} was not only failures - there was a successful login to {o['user']} at "
                          f"{o['time']} from {o['ip']} ({o['location']}).")
         if OWNER_Q.search(question):
+            usual_ips = {d["ip"] for d in i.get("ip_details", []) if d["usual_for_user"]}
             for t in sq.get("transfers", [])[:3]:
-                if "usual_ip" not in t:
-                    continue
+                if "usual_ip" not in t:      # older incidents.json: judge by the incident's IPs and attack type
+                    t = dict(t, usual_ip=bool(usual_ips) and i["vector"] == "Transaction Anomaly",
+                             registered_device=i["vector"] == "Transaction Anomaly")
                 if t["usual_ip"] and t["registered_device"]:
                     notes.append(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']}) came from the customer's usual IP and "
                                  f"registered device, so it was most likely made by the customer - or by someone who "
@@ -526,6 +528,13 @@ def answer(question, max_attempts=3):
                 "retrieved_by": why, "source": "facts", "grounding": {"grounded": True, "unverified": [], "checked": 0},
                 "attempts": [], "seconds": round(time.time() - t0, 1)}
     notes = premise_notes(question, sel)
+    if notes and sel and (BLOCK_Q.search(question) or OWNER_Q.search(question)):
+        # yes/no decisions (block this IP? did the customer do it?) come from the data, not the LLM
+        text = " ".join(notes) + "\n\n" + fallback(sel, incidents, False, why)
+        return {"question": question, "answer": text + containment_section(sel), "incidents": [i["id"] for i in sel],
+                "retrieved_by": why + ["decision"], "source": "facts",
+                "grounding": {"grounded": True, "unverified": [], "checked": 0}, "attempts": [],
+                "seconds": round(time.time() - t0, 1)}
     if notes and not sel:          # e.g. "which accounts were locked?" with no incident named: the note IS the answer
         return {"question": question, "answer": " ".join(notes), "incidents": [], "retrieved_by": why + ["premise"],
                 "source": "facts", "grounding": {"grounded": True, "unverified": [], "checked": 0}, "attempts": [],
@@ -549,6 +558,14 @@ def answer(question, max_attempts=3):
         text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
         g = check(text, vfacts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        foreign = [t for i in sel for t in i.get("sequence", {}).get("transfers", [])
+                   if t.get("usual_ip") is False or t.get("registered_device") is False
+                   or ("usual_ip" not in t and i["vector"] == "Account Takeover")]
+        if foreign and re.search(r"\b(?:made|sent|did|authori[sz]ed)\b[^.]{0,60}\bthemselves\b|\bthe (?:user|customer|"
+                                 r"account owner)\s+(?:[\w-]+\s+){0,2}(?:made|sent|transferred)\b", text, re.I):
+            g["unverified"] = sorted(g["unverified"] + ["says the customer made transfers that came from an "
+                                                        "unfamiliar IP/device (attacker)"])
+            g["grounded"] = False
         # questions about a specific user / IP / transaction / incident must cover EVERY incident it appears in
         if any(w in ("user/ip/transaction", "incident id") for w in why):
             skipped = [i["id"] for i in sel if i["id"] not in text]
