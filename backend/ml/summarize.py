@@ -279,6 +279,13 @@ def grounding_check(text, facts, inc=None, summary=None):
             kind = next(k for k in ("failed", "successful", "transfer", "account", "event") if m.group(k))
             if n is not None and n not in allowed[kind]:
                 problems.append(f'wrong count: "{m.group(0)}" (facts: {sorted(allowed[kind])})')
+        # "and 5 additional/more/other accounts" = the users NOT named in the text (Who lists only 5 of 8)
+        if inc is not None:
+            named = len({u for u in inc["users"] if u in text})
+            for m in re.finditer(r"\b" + _N + r"\s+(?:additional|more|other|further)\s+(?:user\s+)?accounts?\b", text, re.I):
+                n = WORD_NUM.get(m.group(1).lower()) if not m.group(1).isdigit() else int(m.group(1))
+                if n is not None and n != len(inc["users"]) - named:
+                    problems.append(f'wrong count: "{m.group(0)}" ({len(inc["users"])} accounts, {named} named)')
         # durations must match a real gap between two times in the facts
         mins = sorted({int(h) * 60 + int(mm) for h, mm in re.findall(r"\b(\d{2}):(\d{2})\b", facts)})
         gaps = {abs(x - y) for x in mins for y in mins}
