@@ -265,7 +265,13 @@ def facts_for(sel, reports, incidents, with_stats, why=(), full=False):
 
 def fallback(sel, incidents, with_stats, why=()):
     """Correct-by-construction reply from the facts, used when the LLM can't pass the check."""
-    out = [f"No incident in the current data involves {w.split(': ', 1)[1]}." for w in why if w.startswith("not found")]
+    def nf(x):
+        if x.startswith("incidents on "):
+            d = x.split()[2]
+            return (f"{d} is not a real date (September has 30 days)." if d.endswith("-31") and "-09-" in d else
+                    f"There are no incidents on {x[len('incidents on '):]} in the current data.")
+        return f"No incident in the current data involves {x}."
+    out = [nf(w.split(": ", 1)[1]) for w in why if w.startswith("not found")]
     if with_stats:
         by_v = Counter(i["vector"] for i in incidents)
         out.append(f"**{len(incidents)} incidents**: " + ", ".join(f"{n} {v}" for v, n in by_v.most_common()) + ".")
