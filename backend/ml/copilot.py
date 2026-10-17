@@ -196,7 +196,19 @@ def retrieve(q, incidents, max_items=5):
     unknown = unknown_names(q, incidents)
     if unknown:
         why.append(f"not found: {', '.join(unknown)}")
-    asked_entity = bool(ids or users or ips or txns or unknown or day or named)
+    # superlatives rank over ALL matching incidents, not the 5 highest-risk ones
+    metric = (("money", lambda i: -i["amount_total"]) if re.search(r"\b(?:money|amount|lost|stolen|largest|biggest|"
+                                                                  r"transferr?ed|costliest)\b", ql) else
+              ("accounts", lambda i: -len(i["users"])) if re.search(r"\b(?:accounts|users|victims|targets)\b", ql) else
+              ("earliest", lambda i: i["start"]) if re.search(r"\b(?:first|earliest|oldest)\b", ql) else
+              ("latest", lambda i: [-ord(c) for c in i["start"]]) if re.search(r"\b(?:last|latest|most recent|newest)\b", ql)
+              else None)
+    if metric and re.search(r"\b(?:most|least|largest|biggest|highest|lowest|first|earliest|oldest|last|latest|"
+                            r"newest|top|worst|costliest)\b", ql) and not (ids or users or ips or txns):
+        pool = [i for i in incidents if (not vectors or i["vector"] in vectors) and (not sev or i["sev"] == sev)]
+        sel = sorted(pool, key=metric[1])[:max_items]
+        why = [w for w in why if not w.startswith(("type/place", "severity", "top risk"))] + [f"ranked by {metric[0]}"]
+    asked_entity = bool(ids or users or ips or txns or unknown or day or named or DONE_Q.search(q))
     if not sel and not wants_stats and not asked_entity:
         sel = incidents[:3]          # vague question: fall back to the highest-risk incidents
         why.append("top risk")
@@ -409,11 +421,40 @@ def welcome():
             "source": "facts", "grounding": {"grounded": True, "unverified": []}, "seconds": 0.0}
 
 
+DONE_Q = re.compile(r"\b(?:were|was|been|got|already|have we|did we)\b[^?]{0,40}\b(?:locked|blocked|frozen|"
+                    r"suspended|banned|reset|recalled|contained)\b|\b(?:locked|blocked|frozen)\b[^?]{0,30}\b(?:yesterday|"
+                    r"already|today)\b", re.I)
+FAIL_Q = re.compile(r"\b(?:why|how)\b[^?]*\b(?:fail(?:ed)?|unsuccessful|didn'?t (?:work|succeed|get in))\b", re.I)
+MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
+
+
+def premise_notes(question, sel):
+    """Facts written by code when the question assumes something false. The LLM answer comes after them."""
+    notes = []
+    if DONE_Q.search(question):
+        notes.append("Nothing has been locked, blocked or frozen yet: Sentra only detects incidents and recommends "
+                     "containment; an analyst carries it out. The recommended actions are listed per incident.")
+    for i in sel:
+        sq = i.get("sequence", {})
+        if FAIL_Q.search(question) and sq.get("successful_logins"):
+            o = sq["successful_logins"][0]
+            notes.append(f"Note: {i['id']} was not only failures - there was a successful login to {o['user']} at "
+                         f"{o['time']} from {o['ip']} ({o['location']}).")
+        if MONEY_Q.search(question) and not sq.get("transfers") and i["vector"] != "Transaction Anomaly":
+            notes.append(f"No money moved in {i['id']}: it was a login attack with no transfers.")
+    return notes
+
+
 def answer(question, max_attempts=3):
     t0 = time.time()
     incidents, reports = load()
     sel, why, with_stats = retrieve(question, incidents)
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
+    notes = premise_notes(question, sel)
+    if notes and not sel:          # e.g. "which accounts were locked?" with no incident named: the note IS the answer
+        return {"question": question, "answer": " ".join(notes), "incidents": [], "retrieved_by": why + ["premise"],
+                "source": "facts", "grounding": {"grounded": True, "unverified": [], "checked": 0}, "attempts": [],
+                "seconds": round(time.time() - t0, 1)}
     if missing and not sel and not with_stats:      # nothing real to talk about: answer from code, no LLM
         text = fallback(sel, incidents, with_stats, why)
         return {"question": question, "answer": text, "incidents": [], "retrieved_by": why, "source": "facts",
@@ -433,6 +474,10 @@ def answer(question, max_attempts=3):
         text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
         g = check(text, vfacts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        if any(i.get("sequence", {}).get("successful_logins") for i in sel) and \
+                re.search(r"\bfailed because\b|\bwas unsuccessful because\b", text, re.I):
+            g["unverified"] = sorted(g["unverified"] + ["explains a failure, but a login succeeded"])
+            g["grounded"] = False
         for m in missing:
             if re.search(rf"\b{re.escape(m)}\b", text, re.I):
                 g["unverified"] = sorted(g["unverified"] + [f"repeats '{m}', which is not in the data"])
@@ -451,6 +496,8 @@ def answer(question, max_attempts=3):
     else:
         src, text = "facts", fallback(sel, incidents, with_stats, why)
         best["grounding"] = check(text, vfacts, sel, llm=False)
+    if notes:                                   # the question assumed something false: code corrects it first
+        text = " ".join(notes) + "\n\n" + text
     if missing and src != "facts":              # the question named something the data doesn't have: say so first
         text = "".join(f"No incident in the current data involves {m}. " for m in missing) + "\n\n" + text
     text += containment_section(sel)            # actions always come from code, grouped per incident

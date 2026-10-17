@@ -171,12 +171,14 @@ def containment_actions(inc):
 
 def sequence_line(inc):
     sq = inc.get("sequence", {})
-    parts = []
+    parts = []                     # in true time order: a login BEFORE the failures is listed first
+    timed = []
     if sq.get("failed_logins"):
         a, b = sq["failed_window"]
-        parts.append(f"{sq['failed_logins']} failed logins between {a} and {b}")
+        timed.append((a, f"{sq['failed_logins']} failed logins between {a} and {b}"))
     for s in sq.get("successful_logins", [])[:2]:
-        parts.append(f"successful login to {s['user']} at {s['time']} from {s['ip']} ({s['location']})")
+        timed.append((s["time"], f"successful login to {s['user']} at {s['time']} from {s['ip']} ({s['location']})"))
+    parts += [t for _, t in sorted(timed, key=lambda x: x[0])]
     if sq.get("failed_logins") and not sq.get("successful_logins"):
         parts.append("NO successful logins (all attempts failed - attacker did not get in)")
     tr = sq.get("transfers", [])
