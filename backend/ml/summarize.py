@@ -57,6 +57,37 @@ FACTS:
 {facts}
 """
 
+# Login-only incidents (no transfers) get a prompt with NO money vocabulary at all: the general prompt's talk of
+# transfers, merchants and transaction IDs primed the 3B model to invent them on credential-stuffing incidents.
+PROMPT_LOGIN = """You are a SOC analyst assistant at a FinTech company. This was a LOGIN attack. Write an incident
+report using ONLY the FACTS below.
+Rules:
+- Do not invent IP addresses, user IDs, counts, times or locations not in FACTS. Copy numbers exactly.
+- Always name the affected user ID(s) from "Who".
+- {outcome}
+- summary: 2-3 sentences in time order: how many failed logins, from which IP and location, against which
+  account(s), between which times, and what happened next. End with: "No money moved."
+- investigation_steps: exactly 2 follow-up checks an analyst should do next. Each MUST name a specific IP or
+  user ID from FACTS. Blocking and password resets are already handled - do not repeat them.
+  Do NOT suggest improving the AI engine, the model, threat intelligence or general processes.
+- No markdown. Respond with JSON only, in exactly this shape:
+{{"summary": "<2-3 sentences>", "investigation_steps": ["<step 1>", "<step 2>"]}}
+
+FACTS:
+{facts}
+"""
+
+
+def build_prompt(inc, facts):
+    sq = inc.get("sequence", {})
+    if sq.get("transfers"):
+        return PROMPT.format(facts=facts)
+    oks = sq.get("successful_logins", [])
+    outcome = (f"The attacker DID get in: successful login to {oks[0]['user']} at {oks[0]['time']}. Say so; do NOT "
+               "write that all attempts failed." if oks else
+               "Every login attempt FAILED - say that no account was accessed. Do NOT claim anyone logged in.")
+    return PROMPT_LOGIN.format(facts=facts, outcome=outcome)
+
 
 def five_ws(inc):
     users = ", ".join(inc["users"][:5]) + (f" (+{len(inc['users']) - 5} more)" if len(inc["users"]) > 5 else "")
@@ -332,7 +363,7 @@ def generate(prompt, temperature):
 
 def summarize(inc, dry_run=False, max_attempts=3):
     facts = facts_block(inc)
-    prompt = PROMPT.format(facts=facts)
+    prompt = build_prompt(inc, facts)
     if dry_run:
         print(prompt)
         return None
