@@ -435,6 +435,7 @@ DONE_Q = re.compile(r"\b(?:were|was|been|got|already|have we|did we)\b[^?]{0,40}
                     r"suspended|banned|reset|recalled|contained)\b|\b(?:locked|blocked|frozen)\b[^?]{0,30}\b(?:yesterday|"
                     r"already|today)\b", re.I)
 FAIL_Q = re.compile(r"\b(?:why|how)\b[^?]*\b(?:fail(?:ed)?|unsuccessful|didn'?t (?:work|succeed|get in))\b", re.I)
+BLOCK_Q = re.compile(r"\b(?:should|can|do|shall|must)\b[^?]{0,20}\bblock\b", re.I)
 OWNER_Q = re.compile(r"\b(?:themselves|himself|herself|the customer (?:did|made|sent)|by the (?:customer|user)|"
                      r"(?:was|is) it (?:really )?(?:the customer|them|the user)|their own)\b", re.I)
 MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
@@ -446,6 +447,19 @@ def premise_notes(question, sel):
     if DONE_Q.search(question):
         notes.append("Nothing has been locked, blocked or frozen yet: Sentra only detects incidents and recommends "
                      "containment; an analyst carries it out. The recommended actions are listed per incident.")
+    if BLOCK_Q.search(question):
+        asked = set(re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", question))
+        for i in sel:
+            for d in i.get("ip_details", []):
+                if asked and d["ip"] not in asked:
+                    continue
+                if d["usual_for_user"] and d["threat"] == "None":
+                    notes.append(f"No - do not block {d['ip']}: it is the usual IP of {', '.join(i['users'][:3])}, "
+                                 f"so blocking it would lock out the real customer. Verify the activity with them "
+                                 f"instead ({i['id']}).")
+                else:
+                    feed = f"on the threat feed ({d['threat']})" if d["threat"] != "None" else "not one the customer uses"
+                    notes.append(f"Yes - block {d['ip']}: it is {feed} and was used in {i['id']} ({i['vector']}).")
     for i in sel:
         sq = i.get("sequence", {})
         if FAIL_Q.search(question) and sq.get("successful_logins"):
@@ -533,7 +547,8 @@ def answer(question, max_attempts=3):
         text = " ".join(notes) + "\n\n" + text
     if missing and src != "facts":              # the question named something the data doesn't have: say so first
         text = "".join(f"No incident in the current data involves {m}. " for m in missing) + "\n\n" + text
-    text += containment_section(sel)            # actions always come from code, grouped per incident
+    # actions come from code, only for the incidents the answer is actually about (a refusal gets none)
+    text += containment_section([i for i in sel if i["id"] in text])
     return {"question": question, "answer": text, "incidents": [i["id"] for i in sel], "retrieved_by": why,
             "source": src, "grounding": best["grounding"], "attempts": attempts,
             "seconds": round(time.time() - t0, 1)}
