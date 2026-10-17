@@ -160,7 +160,16 @@ def timeline(g):
         ip = g.loc[g.ip_threat_score.idxmax(), "ip_address"]
         rows.append({"time": hm(g.timestamp.min()), "actor": "Threat Intel",
                      "msg": f"{ip} matches threat feed ({THREAT_NAME[max_threat]})", "color": COLOR["intel"]})
-    for _, r in g.sort_values("timestamp").head(12).iterrows():   # cap so big stuffing waves stay readable
+    g = g.sort_values("timestamp")
+    # cap so big stuffing waves stay readable, but never drop a successful login or a transfer (the LLM reads this:
+    # a timeline that shows only failures made it write "all attempts failed")
+    key = (g.kind == "txn") | (g.status == "success")
+    shown = g[key | g.index.isin(g[~key].head(max(0, 12 - int(key.sum()))).index)]
+    hidden = int((~g.index.isin(shown.index) & (g.kind == "login") & (g.status == "failed")).sum())
+    if hidden:
+        rows.append({"time": hm(g[~g.index.isin(shown.index)].timestamp.min()), "actor": "Auth Service",
+                     "msg": f"+{hidden} more failed logins not listed", "color": COLOR["auth_fail"]})
+    for _, r in shown.iterrows():
         if r.kind == "login":
             ok = r.status == "success"
             rows.append({"time": hm(r.timestamp), "actor": "Auth Service",
