@@ -253,7 +253,9 @@ def sequence(g):
         "successful_logins": [{"time": hm(r.timestamp), "user": r.user_id, "ip": r.ip_address, "location": r.location}
                               for _, r in ok.iterrows()][:5],
         "transfers": [{"id": r.eid, "time": hm(r.timestamp), "amount": float(r.amount), "merchant": r.merchant,
-                       "status": r.status}
+                       "status": r.status,
+                       # was it made from the customer's own setup? (answers "did the customer do it themselves?")
+                       "usual_ip": bool(r.ip_not_usual == 0), "registered_device": bool(r.is_new_device == 0)}
                       for _, r in txns.iterrows()][:10],
     }
 

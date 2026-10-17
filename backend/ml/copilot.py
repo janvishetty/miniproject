@@ -97,6 +97,9 @@ def readability_problems(text):
                         r"Model Confidence|Impact|Severity|Location|Time|User IDs?|IP|Incident ID)\**\s*:", t, re.M | re.I)
     if len(fields) >= 3:
         p.append("copied fact fields (Field: value lines) instead of answering in prose")
+    if len(re.findall(r"\b(?:do(?:es)?n'?t|do(?:es)? not) (?:provide|include|contain|mention)\b[^.\n]{0,40}\binformation\b"
+                      r"|\bno (?:further|additional) information\b", t, re.I)) >= 1:
+        p.append("filler: says the facts lack information instead of answering from them")
     if len(t.split()) > 260:
         p.append(f"too long ({len(t.split())} words)")
     dangling = re.search(r"\b(?:to|and|or|the|of|from|with|a|an|for|at|by|in|on|via|than|then)\s*$", t, re.I)
@@ -432,6 +435,8 @@ DONE_Q = re.compile(r"\b(?:were|was|been|got|already|have we|did we)\b[^?]{0,40}
                     r"suspended|banned|reset|recalled|contained)\b|\b(?:locked|blocked|frozen)\b[^?]{0,30}\b(?:yesterday|"
                     r"already|today)\b", re.I)
 FAIL_Q = re.compile(r"\b(?:why|how)\b[^?]*\b(?:fail(?:ed)?|unsuccessful|didn'?t (?:work|succeed|get in))\b", re.I)
+OWNER_Q = re.compile(r"\b(?:themselves|himself|herself|the customer (?:did|made|sent)|by the (?:customer|user)|"
+                     r"(?:was|is) it (?:really )?(?:the customer|them|the user)|their own)\b", re.I)
 MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
 
 
@@ -447,6 +452,20 @@ def premise_notes(question, sel):
             o = sq["successful_logins"][0]
             notes.append(f"Note: {i['id']} was not only failures - there was a successful login to {o['user']} at "
                          f"{o['time']} from {o['ip']} ({o['location']}).")
+        if OWNER_Q.search(question):
+            for t in sq.get("transfers", [])[:3]:
+                if "usual_ip" not in t:
+                    continue
+                if t["usual_ip"] and t["registered_device"]:
+                    notes.append(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']}) came from the customer's usual IP and "
+                                 f"registered device, so it was most likely made by the customer - or by someone who "
+                                 f"tricked them into paying. Confirm with the customer before acting.")
+                else:
+                    notes.append(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']}) did NOT come from the customer's "
+                                 f"usual setup ({'new IP' if not t['usual_ip'] else ''}"
+                                 f"{' and ' if not t['usual_ip'] and not t['registered_device'] else ''}"
+                                 f"{'unregistered device' if not t['registered_device'] else ''}), so it was most likely "
+                                 f"not the customer.")
         if MONEY_Q.search(question) and not sq.get("transfers") and i["vector"] != "Transaction Anomaly":
             notes.append(f"No money moved in {i['id']}: it was a login attack with no transfers.")
     return notes

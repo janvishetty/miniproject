@@ -184,9 +184,16 @@ def sequence_line(inc):
         parts.append("NO successful logins (all attempts failed - attacker did not get in)")
     tr = sq.get("transfers", [])
     if tr:
+        def origin(t):
+            if "usual_ip" not in t:
+                return ""
+            if t["usual_ip"] and t["registered_device"]:
+                return ", from the customer's usual IP and registered device"
+            return (", from " + " and ".join(x for x, ok in (("an IP the customer never uses", t["usual_ip"]),
+                                                              ("an unregistered device", t["registered_device"])) if not ok))
         parts.append(f"{len(tr)} transfer(s): " + ", ".join(
-            f"{t['id']} ₹{t['amount']:,.0f} to {t.get('merchant') or 'unknown merchant'} at {t['time']} ({t['status']})"
-            for t in tr))
+            f"{t['id']} ₹{t['amount']:,.0f} to {t.get('merchant') or 'unknown merchant'} at {t['time']} ({t['status']}"
+            f"{origin(t)})" for t in tr))
     else:
         parts.append("NO transfers or transactions in this incident (no money moved)")
     return " -> ".join(parts)
