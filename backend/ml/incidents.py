@@ -74,7 +74,8 @@ def rule_alerts(data_dir: Path):
         for al in inc["alerts"]:
             for e in al["event_ids"]:
                 hits.setdefault(e, []).append({"rule": al["rule"], "severity": inc["severity"].lower(),
-                                               "attack": inc["attack_type"]})
+                                               "attack": inc["attack_type"],
+                                               "mitre": [f"{m['id']} {m['name']}" for m in inc["mitre"]]})
     print(f"rule engine: {len(alerts)} alerts on {len(hits)} events")
     export_rule_alerts(hits, logs, OUT_DIR)
     return hits
@@ -295,6 +296,8 @@ def build_incident(g, vector):
         "rule_hits": [{"rule": r, "name": RULE_NAMES.get(r, r), "events": n, "first": ts.isoformat()}
                       for r, (ts, n) in sorted(rules.items(), key=lambda kv: kv[1][0])],
         "ml_event_ids": g.loc[g.by_ml, "eid"].tolist(),
+        "rule_mitre": sorted({m for hs in g.rule_hits for h in hs if h["rule"] not in WEAK_RULES
+                              for m in h.get("mitre", [])}),
     }
 
 

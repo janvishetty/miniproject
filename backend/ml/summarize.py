@@ -91,6 +91,21 @@ def build_prompt(inc, facts):
     return PROMPT_LOGIN.format(facts=facts, outcome=outcome)
 
 
+def mitre_for(inc):
+    """MITRE for THIS incident: the attack-type table, plus what the rule engine mapped on its events; T1110 Brute
+    Force only when there were failed logins; a parent technique is dropped when its sub-technique is listed."""
+    tags = list(MITRE.get(inc["vector"], []))
+    if not inc.get("sequence", {}).get("failed_logins"):
+        tags = [m for m in tags if not m.startswith("T1110 ")]
+    for m in inc.get("rule_mitre", []):
+        if m.split()[0] == "T1110" and not inc.get("sequence", {}).get("failed_logins"):
+            continue
+        if m.split()[0] not in {t.split()[0] for t in tags}:
+            tags.append(m)
+    ids = {t.split()[0] for t in tags}
+    return [t for t in tags if not any(o.startswith(t.split()[0] + ".") for o in ids)]
+
+
 def five_ws(inc):
     users = ", ".join(inc["users"][:5]) + (f" (+{len(inc['users']) - 5} more)" if len(inc["users"]) > 5 else "")
     return {
@@ -411,7 +426,7 @@ def summarize(inc, dry_run=False, max_attempts=3):
         "source": source,                                  # llm | llm_corrected | template
         "id": inc["id"], "title": inc["title"], "sev": inc["sev"], "vector": inc["vector"],
         "confidence": inc["confidence"], "impact": inc["impact"],
-        "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
+        "five_ws": five_ws(inc), "mitre": mitre_for(inc),
         "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", []),   # from code, not the LLM
         "pipeline_run_id": inc.get("pipeline_run_id"),
         "summary": best["summary"],
@@ -486,7 +501,7 @@ def main():
         r = cache.get(inc["id"])
         if r and inc["id"] not in stale:
             r.update({"sev": inc["sev"], "vector": inc["vector"], "confidence": inc["confidence"], "impact": inc["impact"],
-                      "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
+                      "five_ws": five_ws(inc), "mitre": mitre_for(inc),
                       "containment_actions": containment_actions(inc),
                       "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", []),
                       "pipeline_run_id": inc.get("pipeline_run_id")})

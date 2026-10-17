@@ -109,7 +109,7 @@ A list of verified incident reports (critical + high). Key fields:
 | `id`, `title`, `sev`, `vector`, `confidence`, `impact` | Copied from the incident |
 | `summary` | 2-3 sentence narrative of the attack |
 | `five_ws` | `{who, what, when, where, why_flagged}`, written by code from the data |
-| `mitre` | MITRE ATT&CK techniques, e.g. `["T1078 Valid Accounts", "T1110 Brute Force"]` |
+| `mitre` | MITRE ATT&CK techniques for this incident, e.g. `["T1110 Brute Force", "T1078 Valid Accounts", "T1657 Financial Theft"]`: the attack-type table plus the rule engine's mapping (`rule_mitre` on the incident); T1110 only when there were failed logins |
 | `containment_actions` | Block / lock / freeze / hold / MFA steps, written by code per attack type |
 | `investigation_steps` | 2 follow-up checks |
 | `source` | `llm`, `llm_corrected` (passed after a retry) or `template` (LLM failed 3 times; code-built text) |
