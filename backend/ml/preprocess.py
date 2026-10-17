@@ -35,6 +35,9 @@ LOWER = {"event_type", "status", "mfa_status", "device_type"}   # normalise case
 def drop(df, mask, reason, log):
     n = int(mask.sum())
     log[reason] = n
+    idcol = next((c for c in ("event_id", "transaction_id") if c in df), None)
+    if n and idcol:   # which events were removed, so the backend can tell a dropped ID from a missing one
+        log.setdefault("dropped_ids", {})[reason] = df.loc[mask, idcol].astype(str).tolist()
     return df[~mask]
 
 

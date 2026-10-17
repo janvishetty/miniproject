@@ -86,6 +86,8 @@ def build_prompt(inc, facts):
     outcome = (f"The attacker DID get in: successful login to {oks[0]['user']} at {oks[0]['time']}. Say so; do NOT "
                "write that all attempts failed." if oks else
                "Every login attempt FAILED - say that no account was accessed. Do NOT claim anyone logged in.")
+    if not sq.get("failed_logins"):     # a single suspicious login: don't let the template talk about failures
+        outcome += " There were NO failed logins: do not mention failed logins or attempts at all."
     return PROMPT_LOGIN.format(facts=facts, outcome=outcome)
 
 
@@ -281,6 +283,8 @@ def grounding_check(text, facts, inc=None, summary=None):
             kind = next(k for k in ("failed", "successful", "transfer", "account", "event") if m.group(k))
             if n is not None and n not in allowed[kind]:
                 problems.append(f'wrong count: "{m.group(0)}" (facts: {sorted(allowed[kind])})')
+        if re.search(r"\b(?:0|zero|no)\s+failed\s+(?:log\s?-?ins?|attempts?)\b", text, re.I) and not sq.get("failed_logins"):
+            problems.append('mentions failed logins ("0 failed logins") when there were none - leave them out')
         # "and 5 additional/more/other accounts" = the users NOT named in the text (Who lists only 5 of 8)
         if inc is not None:
             named = len({u for u in inc["users"] if u in text})
