@@ -186,7 +186,8 @@ def facts_block(inc):
     ]
     # Rule Engine rows stay out of the LLM facts: rule names like "Transfer far above the user's average" made the
     # 3B model invent transfers on login-only incidents. Rules reach the report through code (`rule_hits` below).
-    lines += [f"  {t['time']} [{t['actor']}] {t['msg']}" for t in reversed(inc["timeline"]) if t["actor"] != "Rule Engine"]
+    lines += [f"  {t['time']} [{t['actor']}] {t['msg']}" for t in reversed(inc["timeline"])
+              if t["actor"] != "Rule Engine" and not t["msg"].endswith("not listed")]   # "+N more" note: frontend only
     return "\n".join(lines)
 
 
