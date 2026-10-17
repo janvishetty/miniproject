@@ -111,6 +111,32 @@ def load():
     return inc, reports
 
 
+# Words that are fine in a question even though no incident contains them
+KNOWN_WORDS = {"i", "ip", "ips", "inc", "id", "ids", "mfa", "otp", "api", "waf", "soc", "ato", "app", "upi", "ml", "ai",
+               "llm", "shap", "mitre", "att&ck", "copilot", "sentra", "vantix", "fsia", "rs", "inr", "india", "indian",
+               "september", "sept", "sep", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+               "sunday", "today", "yesterday", "ok", "okay", "please", "hi", "hello", "thanks", "and", "or", "the",
+               "what", "which", "who", "when", "where", "why", "how", "show", "tell", "list", "give", "explain"}
+NAME = re.compile(r"\b(?:[A-Z][A-Za-z0-9&]*(?:-[A-Za-z0-9]+)*)\b")
+ID_LIKE = re.compile(r"^(?:INC-\d{4}-\d{4}|U\d{4}|T\d{6}|E\d{6}|A\d{6}|T\d{4}(?:\.\d{3})?|R_[A-Z_]+)$")
+
+
+def unknown_names(q, incidents):
+    """Names in the question (PayPal, FIN-APT-7, SWIFT) that appear nowhere in the data: the question assumes
+    something that isn't there, so the answer must say so instead of playing along."""
+    vocab = set(re.findall(r"[a-z0-9&]+", json.dumps(incidents).lower())) | KNOWN_WORDS
+    words = q.split()
+    out = []
+    for m in NAME.finditer(q):
+        tok = m.group(0)
+        if m.start() == 0 or ID_LIKE.match(tok):        # first word is capitalised anyway; IDs are checked elsewhere
+            continue
+        parts = re.findall(r"[a-z0-9&]+", tok.lower())
+        if parts and not all(x in vocab for x in parts) and tok not in out:
+            out.append(tok)
+    return out
+
+
 def retrieve(q, incidents, max_items=5):
     """Pick the incidents a question is about. Returns (selected incidents, why, wants_stats)."""
     ql = q.lower()
@@ -132,7 +158,8 @@ def retrieve(q, incidents, max_items=5):
         sel += [i for i in hit if i not in sel]
         why.append("user/ip/transaction" if hit else
                    f"not found: {', '.join(sorted(users | ips | txns))}")
-    vectors = [v for v, words in VECTOR_WORDS.items() if any(w in ql for w in words)]
+    vectors = [v for v, words in VECTOR_WORDS.items()   # word START only: "takeovers" ok, "zomato" is not "ato"
+               if any(re.search(rf"\b{re.escape(w)}", ql) for w in words)]
     places = {w for i in incidents for o in i.get("sequence", {}).get("successful_logins", [])
               for w in [o["location"].split(",")[0].lower()]} | {i["title"].split(" from ")[-1].split(",")[0].lower()
                                                                   for i in incidents if " from " in i["title"]}
@@ -142,13 +169,34 @@ def retrieve(q, incidents, max_items=5):
                 and (not place or place in json.dumps(i).lower())]
         sel = pool[:max_items]
         why.append(f"type/place: {', '.join(vectors) or ''} {place or ''}".strip())
+    # merchants: "Zomato", "Amazon India", "crypto exchange"
+    merchants = {t["merchant"] for i in incidents for t in i.get("sequence", {}).get("transfers", [])}
+    named = [m for m in merchants if re.search(rf"\b{re.escape(m.split(' - ')[0].lower())}\b", ql)
+             or re.search(rf"\b{re.escape(m.split()[0].lower())}\b", ql) and len(m.split()[0]) > 4]
+    if named and not sel:
+        sel = [i for i in incidents if {t["merchant"] for t in i["sequence"].get("transfers", [])} & set(named)][:max_items]
+        why.append(f"merchant: {', '.join(sorted(named))}")
+    # dates: "2026-09-10", "10 Sept", "September 10", "10/09" (combined with type/place/merchant if given)
+    mon = r"(?:sep(?:t(?:ember)?)?)"
+    day = (re.search(r"\b2026-09-(\d{2})\b", ql) or re.search(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?{mon}\b", ql)
+           or re.search(rf"\b{mon}\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?\b", ql) or re.search(r"\b(\d{1,2})/0?9\b", ql))
+    if day:
+        d = f"2026-09-{int(day.group(1)):02d}"
+        pool = ([i for i in incidents if i["vector"] in vectors] if vectors   # all of that type, not just the top 5
+                else sel if sel else incidents)
+        on_day = [i for i in pool if i["start"][:10] <= d <= i["end"][:10]]
+        sel = on_day[:max_items]
+        why.append(f"date: {d}" if on_day else f"not found: incidents on {d}" + (f" ({', '.join(vectors)})" if vectors else ""))
     sev = next((s for s in SEV_ORDER if s in ql), None)
     if not sel and sev:
         sel = [i for i in incidents if i["sev"] == sev][:max_items]
         why.append(f"severity: {sev}")
     wants_stats = bool(re.search(r"\bhow many\b|\bcount(?:s)?\b|\bnumber of\b|\bstats?\b|\boverview\b|"
                                  r"\bbreakdown\b|\bsummar\w*|\bposture\b|\btoday\b", ql))
-    asked_entity = bool(ids or users or ips or txns)
+    unknown = unknown_names(q, incidents)
+    if unknown:
+        why.append(f"not found: {', '.join(unknown)}")
+    asked_entity = bool(ids or users or ips or txns or unknown or day or named)
     if not sel and not wants_stats and not asked_entity:
         sel = incidents[:3]          # vague question: fall back to the highest-risk incidents
         why.append("top risk")
@@ -365,6 +413,12 @@ def answer(question, max_attempts=3):
     t0 = time.time()
     incidents, reports = load()
     sel, why, with_stats = retrieve(question, incidents)
+    missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
+    if missing and not sel and not with_stats:      # nothing real to talk about: answer from code, no LLM
+        text = fallback(sel, incidents, with_stats, why)
+        return {"question": question, "answer": text, "incidents": [], "retrieved_by": why, "source": "facts",
+                "grounding": {"grounded": True, "unverified": [], "checked": 0}, "attempts": [],
+                "seconds": round(time.time() - t0, 1)}
     facts = facts_for(sel, reports, incidents, with_stats, why)               # what the model sees
     vfacts = facts_for(sel, reports, incidents, with_stats, why, full=True)   # what claims are checked against
     action_q = bool(re.search(r"\bremediat\w*|\bcontain\w*|\bmitigat\w*|\bplan\b|\bwhat (?:should|do) we do\b|"
@@ -379,6 +433,10 @@ def answer(question, max_attempts=3):
         text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
         g = check(text, vfacts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        for m in missing:
+            if re.search(rf"\b{re.escape(m)}\b", text, re.I):
+                g["unverified"] = sorted(g["unverified"] + [f"repeats '{m}', which is not in the data"])
+                g["grounded"] = False
         rp = readability_problems(text)
         if rp:
             g["unverified"] = sorted(g["unverified"] + rp)
@@ -393,6 +451,8 @@ def answer(question, max_attempts=3):
     else:
         src, text = "facts", fallback(sel, incidents, with_stats, why)
         best["grounding"] = check(text, vfacts, sel, llm=False)
+    if missing and src != "facts":              # the question named something the data doesn't have: say so first
+        text = "".join(f"No incident in the current data involves {m}. " for m in missing) + "\n\n" + text
     text += containment_section(sel)            # actions always come from code, grouped per incident
     return {"question": question, "answer": text, "incidents": [i["id"] for i in sel], "retrieved_by": why,
             "source": src, "grounding": best["grounding"], "attempts": attempts,
@@ -414,7 +474,7 @@ def main():
                 break
             if not q or q.lower() in ("quit", "exit", "q"):
                 break
-            print("   thinking...", end="\r", flush=True)
+            print("   thinking...", flush=True)
             try:
                 r = answer(q)
             except urllib.error.URLError as e:
