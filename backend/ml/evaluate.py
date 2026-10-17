@@ -27,11 +27,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from features import TXN_FEATURES
+from features import TXN_FEATURES, TXN_THRESHOLD   # TXN_THRESHOLD = the cutoff incidents.py uses
 
 CASHOUT = {"Crypto Exchange", "Overseas Remittance", "Gift Card Marketplace", "Wire Transfer - New Beneficiary"}
 THRESHOLDS = [50, 60, 70, 80, 90]
-TXN_THRESHOLD = 60   # the cutoff incidents.py uses
 
 
 def proxy_cashout(out: Path):

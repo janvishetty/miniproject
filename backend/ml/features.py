@@ -14,6 +14,9 @@ import numpy as np
 import pandas as pd
 
 THREAT_SCORE = {"Low": 1, "Medium": 2, "High": 3}  # 0 = IP not on the threat list
+# score cutoffs for "flagged": the ONE place they live (model.py writes is_flagged, incidents.py groups on it)
+AUTH_THRESHOLD = 70   # login scores 60-70 are mostly single mistyped passwords (checked by score band)
+TXN_THRESHOLD = 60
 
 
 def load(data_dir: Path):

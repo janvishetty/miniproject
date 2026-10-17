@@ -17,7 +17,7 @@ import pandas as pd
 import shap
 from sklearn.ensemble import IsolationForest
 
-from features import AUTH_FEATURES, TXN_FEATURES
+from features import AUTH_FEATURES, TXN_FEATURES, AUTH_THRESHOLD, TXN_THRESHOLD
 
 # Human-readable reason for each feature (used in the frontend + LLM prompt)
 REASON_TEXT = {
@@ -49,7 +49,9 @@ def train_and_explain(df: pd.DataFrame, feats: list, name: str, out: Path, top_n
     # score_samples: higher = more normal. Flip and rescale to 0-100 (100 = most anomalous)
     raw = -model.score_samples(X)
     df["anomaly_score"] = np.round(100 * (raw - raw.min()) / (raw.max() - raw.min()), 1)
-    df["is_anomaly"] = (model.predict(X) == -1).astype(int)
+    df["is_anomaly"] = (model.predict(X) == -1).astype(int)   # raw Isolation Forest label (loose; NOT what incidents use)
+    # is_flagged = what the incidents are built from (score >= threshold). Use THIS for "anomalous" counts.
+    df["is_flagged"] = (df.anomaly_score >= {"auth": AUTH_THRESHOLD, "txn": TXN_THRESHOLD}[name]).astype(int)
 
     # SHAP: for IsolationForest, NEGATIVE values shorten the path = push towards anomaly
     explainer = shap.TreeExplainer(model)

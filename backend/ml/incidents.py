@@ -28,8 +28,10 @@ from pathlib import Path
 
 import pandas as pd
 
-AUTH_THRESHOLD = 70   # login scores 60-70 are mostly single mistyped passwords (checked by score band)
-TXN_THRESHOLD = 60
+try:
+    from .features import AUTH_THRESHOLD, TXN_THRESHOLD     # single source of truth (model.py uses them too)
+except ImportError:
+    from features import AUTH_THRESHOLD, TXN_THRESHOLD
 
 BASE_IMPACT = {"Account Takeover": 70, "Credential Stuffing": 60, "Brute Force": 50,
                "Transaction Anomaly": 45, "Suspicious Login": 35}
@@ -37,6 +39,7 @@ ASSET = {"login": "auth-service /api/v1/login", "txn": "payments-api /api/v1/tra
 COLOR = {"ai": "#7c3aed", "auth_fail": "#dc2626", "auth_ok": "#d97706", "txn": "#2563eb", "intel": "#64748b"}
 THREAT_NAME = {1: "Low", 2: "Medium", 3: "High"}
 ROOT = Path(__file__).resolve().parents[2]
+OUT_DIR = Path(__file__).resolve().parent / "output"
 RULE_NAMES = {   # no thresholds/numbers in the names: they reach the LLM facts and must not look like counts
     "R_BRUTE_FORCE": "Brute force on one account", "R_FAIL_THEN_SUCCESS": "Failed logins then a success",
     "R_NEW_DEVICE_LOGIN": "Login from an unregistered device", "R_NEW_LOCATION": "Login from a new IP and city",
@@ -64,7 +67,8 @@ def rule_alerts(data_dir: Path):
     except FileNotFoundError:
         print("note: fsia_cyber/ not found - running ML-only")
         return None
-    alerts = R.run_all(*R.load(str(data_dir)))
+    logs = R.load(str(data_dir))
+    alerts = R.run_all(*logs)
     hits = {}
     for inc in C.correlate(alerts):
         for al in inc["alerts"]:
@@ -72,7 +76,25 @@ def rule_alerts(data_dir: Path):
                 hits.setdefault(e, []).append({"rule": al["rule"], "severity": inc["severity"].lower(),
                                                "attack": inc["attack_type"]})
     print(f"rule engine: {len(alerts)} alerts on {len(hits)} events")
+    export_rule_alerts(hits, logs, OUT_DIR)
     return hits
+
+
+def export_rule_alerts(hits, logs, out):
+    """output/rule_alerts.csv: one row per (event, rule), the shape of the backend's rule_alerts table:
+    event_id, rule_id, rule_name, severity, timestamp. severity = the rule engine's severity for the attack the
+    alert belongs to (lowercase)."""
+    a, t = logs[0], logs[1]
+    ts = {**dict(zip(a.event_id, a.timestamp)), **dict(zip(t.transaction_id, t.timestamp))}
+    rows = {}
+    for e, hs in hits.items():
+        for h in hs:
+            k = (e, h["rule"])
+            if k not in rows or SEV_RANK[h["severity"]] > SEV_RANK[rows[k]["severity"]]:
+                rows[k] = {"event_id": e, "rule_id": h["rule"], "rule_name": RULE_NAMES.get(h["rule"], h["rule"]),
+                           "severity": h["severity"], "timestamp": str(ts.get(e, ""))}
+    df = pd.DataFrame(list(rows.values())).sort_values(["timestamp", "event_id", "rule_id"])
+    df.to_csv(out / "rule_alerts.csv", index=False)
 
 
 def load(out: Path, hits=None):
@@ -311,6 +333,8 @@ def main():
     a = p.parse_args()
     out = Path(a.out)
 
+    global OUT_DIR
+    OUT_DIR = out
     hits = None if a.no_rules else rule_alerts(Path(a.data))
     ev = load(out, hits)
     ev["rule_hits"] = ev.eid.map(lambda e: (hits or {}).get(e, []))

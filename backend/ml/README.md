@@ -167,6 +167,18 @@ stuffing from Moscow".
 `status` is always `OPEN` from the AI side; the buttons (Contain / Escalate / Resolve) and status filters are
 backend state.
 
+## 3c. Loading the outputs into the database (`backend/sql/schema.sql`)
+
+| Table | Fill from | Watch out |
+|---|---|---|
+| `pipeline_runs` | `output/pipeline_run.json` | Our `pipeline_run_id` is a 12-char fingerprint, not a uuid: keep your uuid and store ours alongside (e.g. in `notes`) to spot reruns that changed nothing |
+| `ml_results` | `output/scored_auth.csv` + `scored_txn.csv` (`event_id` / `transaction_id`, `anomaly_score` 0-100, `top_reasons` JSON) | `is_anomalous` = **`is_flagged`**, NOT `is_anomaly`. `is_anomaly` is the raw Isolation Forest label (2,689 logins); incidents use `is_flagged` (score >= 70 logins / >= 60 transfers: 952 + 119) |
+| `rule_alerts` | `output/rule_alerts.csv` (`event_id, rule_id, rule_name, severity, timestamp`) | Written by `incidents.py` from the fsia_cyber rules; one row per (event, rule) |
+| `incidents` | `output/incidents.json` | Extra fields not in the table yet: `detected_by`, `rule_hits`, `ml_severity`, `rule_severity`, `ml_event_ids`, `threat_actor`, `threat_intel`, `ai_summary`, `created` (HH:MM the frontend shows) |
+| `incident_events` | `event_ids` of each incident | |
+| `correlation_results` | not needed: the rule engine's correlation is already merged into each incident (`rule_hits`), MITRE is in `reports.json` | fsia_cyber's own `incidents.json` (INC-0001…) is a separate list, not 1:1 with ours |
+| `reports` | `output/reports.json` | Also carries `detected_by`, `rule_hits`, `pipeline_run_id` |
+
 ## 4. Things to know
 
 - **Incident IDs are not stable across reruns.** Rerunning `incidents.py` after the data or code changes can
