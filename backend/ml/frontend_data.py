@@ -115,6 +115,7 @@ def main():
                    for i in sorted(incidents, key=lambda x: x["start"], reverse=True)[:10]],
         "by_type": dict(Counter(i["vector"] for i in incidents).most_common()),
         "by_severity": {s: sev.get(s, 0) for s in ("critical", "high", "medium", "low")},
+        "pipeline_run_id": incidents[0].get("pipeline_run_id") if incidents else None,
         "model": {"detector": "Isolation Forest + SHAP, hybrid with rule engine", "llm": "llama3.2:3b (Ollama)"},
     }
     (out / "dashboard.json").write_text(json.dumps(dash, indent=2, ensure_ascii=False))

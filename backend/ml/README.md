@@ -170,7 +170,9 @@ backend state.
 ## 4. Things to know
 
 - **Incident IDs are not stable across reruns.** Rerunning `incidents.py` after the data or code changes can
-  renumber them. Don't store IDs in the database without the run they came from.
+  renumber them. Every incident, report and `dashboard.json` carries `pipeline_run_id` (also in
+  `output/pipeline_run.json`): a fingerprint of the exact incident set. Same id = same incidents; store it with
+  anything you save, and treat a new id as a new run.
 - **Ollama must be running** for `/copilot` and on-demand reports. If it isn't, the scripts raise
   "Can't reach Ollama at http://localhost:11434…"; the API should return a 503 with that message.
 - **LLM calls are slow** (3-30 s). Call them from a background task or show a loading state; don't block the page.

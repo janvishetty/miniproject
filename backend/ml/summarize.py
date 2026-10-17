@@ -407,6 +407,7 @@ def summarize(inc, dry_run=False, max_attempts=3):
         "confidence": inc["confidence"], "impact": inc["impact"],
         "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
         "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", []),   # from code, not the LLM
+        "pipeline_run_id": inc.get("pipeline_run_id"),
         "summary": best["summary"],
         "containment_actions": containment_actions(inc),   # from data
         "investigation_steps": best["steps"],              # from LLM, grounding-checked
@@ -481,7 +482,8 @@ def main():
             r.update({"sev": inc["sev"], "vector": inc["vector"], "confidence": inc["confidence"], "impact": inc["impact"],
                       "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
                       "containment_actions": containment_actions(inc),
-                      "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", [])})
+                      "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", []),
+                      "pipeline_run_id": inc.get("pipeline_run_id")})
     path.write_text(json.dumps(list(cache.values()), indent=2, ensure_ascii=False))
     pending = [i for i in todo if a.force or i["id"] not in cache or i["id"] in stale
                or (a.retry_templates and cache[i["id"]].get("source") == "template")]

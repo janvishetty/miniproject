@@ -347,6 +347,15 @@ def main():
     watch = [{"id": x["id"], "vector": x["vector"], "reason": x["_noise"], "users": x["users"], "ips": x["ips"],
               "start": x["start"], "event_ids": x["event_ids"]} for x in incidents if x.get("_noise")]
     incidents = [{k: v for k, v in x.items() if k != "_noise"} for x in incidents if not x.get("_noise")]
+    # pipeline_run_id: a fingerprint of the exact incident set (IDs + their events). Same data + code -> same id,
+    # so the backend can tell whether a stored INC-... still means the same incident after a rerun.
+    import hashlib, datetime
+    run_id = hashlib.sha256(json.dumps([(x["id"], x["event_ids"]) for x in incidents]).encode()).hexdigest()[:12]
+    for x in incidents:
+        x["pipeline_run_id"] = run_id
+    (out / "pipeline_run.json").write_text(json.dumps({
+        "pipeline_run_id": run_id, "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "incidents": len(incidents), "watchlist": len(watch), "rules_used": hits is not None}, indent=2))
     (out / "watchlist.json").write_text(json.dumps(watch, indent=2, ensure_ascii=False))
     (out / "incidents.json").write_text(json.dumps(incidents, indent=2, ensure_ascii=False))
 
