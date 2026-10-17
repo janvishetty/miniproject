@@ -175,7 +175,8 @@ def sequence_line(inc):
     timed = []
     if sq.get("failed_logins"):
         a, b = sq["failed_window"]
-        timed.append((a, f"{sq['failed_logins']} failed logins between {a} and {b}"))
+        src = f" from {', '.join(sq['failed_ips'][:3])}" if sq.get("failed_ips") else ""
+        timed.append((a, f"{sq['failed_logins']} failed logins{src} between {a} and {b}"))
     for s in sq.get("successful_logins", [])[:2]:
         timed.append((s["time"], f"successful login to {s['user']} at {s['time']} from {s['ip']} ({s['location']})"))
     parts += [t for _, t in sorted(timed, key=lambda x: x[0])]
@@ -340,7 +341,8 @@ def template_report(inc):
     if sq.get("failed_logins"):
         a, b = sq["failed_window"]
         tgt = f"against {len(users)} accounts ({who})" if len(users) > 1 else f"against {who}"
-        fail_txt = f"{sq['failed_logins']} failed logins from {', '.join(ips[:3])} {tgt} between {a} and {b}."
+        src = sq.get("failed_ips") or ips
+        fail_txt = f"{sq['failed_logins']} failed logins from {', '.join(src[:3])} {tgt} between {a} and {b}."
     if oks:
         ok_txt = "Successful login " + "; ".join(f"to {o['user']} at {o['time']} from {o['ip']} ({o['location']})"
                                                  for o in oks[:3]) + "."

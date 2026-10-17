@@ -249,6 +249,7 @@ def sequence(g):
     return {
         "failed_logins": int(len(fails)),
         "failed_window": [hm(fails.timestamp.min()), hm(fails.timestamp.max())] if len(fails) else None,
+        "failed_ips": sorted(fails.ip_address.unique().tolist()),     # where the FAILURES came from (not every IP)
         "successful_logins": [{"time": hm(r.timestamp), "user": r.user_id, "ip": r.ip_address, "location": r.location}
                               for _, r in ok.iterrows()][:5],
         "transfers": [{"id": r.eid, "time": hm(r.timestamp), "amount": float(r.amount), "merchant": r.merchant,
