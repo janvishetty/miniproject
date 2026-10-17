@@ -1,0 +1,4 @@
+ip_address,indicator_type,threat_level,source,description,last_seen
+5.188.177.79,IP,High,Threat feed A,Known botnet C2,2026-06-28
+89.248.165.170,IP,Medium,Partner bank share,Previously suspicious,2026-06-20
+1.2.3.4,IP,Severe,Bad feed,Bad threat level,2026-06-01

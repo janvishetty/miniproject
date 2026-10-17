@@ -186,7 +186,7 @@ def login(request: Request, body: LoginRequest):
             {"email": body.email, "password": body.password})
     except AUTH_ERRORS as exc:
         status = getattr(exc, "status", None)
-        if isinstance(status, int) and status >= 500:       # Supabase itself is failing
+        if isinstance(status, int) and (status >= 500 or status == 429):  # Supabase failing / rate limiting us
             log.error("sign-in service error (status %s)", status)
             raise HTTPException(status_code=503, detail="Authentication service unavailable") from None
         audit.write(None, "auth.login_failed", details={"ip": _client_ip(request)})

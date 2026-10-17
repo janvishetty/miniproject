@@ -1,0 +1,4 @@
+user_id,device_id,registered_device,usual_location,usual_ip,secondary_ip,device_type,avg_txn_amount
+U0001,D00001,Y,"Hyderabad, IN",49.207.174.190,49.207.152.109,android,1100
+U0002,D00002,N,"Mumbai, IN",1.2.3.4,1.2.3.5,ios,500
+U0003,D00003,X,"Pune, IN",1.2.3.6,1.2.3.7,web,300

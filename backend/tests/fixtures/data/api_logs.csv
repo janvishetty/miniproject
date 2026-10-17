@@ -1,0 +1,3 @@
+event_id,timestamp,user_id,ip_address,endpoint,method,status_code
+A000001,2026-09-01 00:45:54,U0407,49.36.172.53,/api/v1/transfer,POST,200
+A000002,2026-09-01 00:46:00,U0001,1.2.3.4,/api/v1/login,GET,abc
