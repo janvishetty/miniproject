@@ -148,6 +148,9 @@ def facts_block(inc):
         f"What: {w['what']}", f"When: {w['when']}", f"Where: {w['where']}",
         f"IP threat-intel level: {inc['ip_threat_level']}",
         "Why flagged (top model reasons): " + "; ".join(w["why_flagged"]),
+        "Detected by: " + {"ml": "ML model only", "rules": "rule engine only", "ml+rules": "ML model and rule engine"}
+        .get(inc.get("detected_by"), "ML model") + (" | Rules fired: " + "; ".join(
+            f"{r['rule']} ({r['name']})" for r in inc["rule_hits"]) if inc.get("rule_hits") else ""),
         "Attack sequence: " + sequence_line(inc),
         "Timeline (oldest first):",
     ]
@@ -266,7 +269,7 @@ def template_report(inc):
     """Correct-by-construction summary + steps, built only from incident data. Used when the LLM can't pass."""
     sq = inc.get("sequence", {})
     users, ips = inc["users"], inc["ips"]
-    who = ", ".join(users[:6]) + (f" and {len(users) - 6} more" if len(users) > 6 else "")
+    who = ", ".join(users[:5]) + (f" and {len(users) - 5} more" if len(users) > 5 else "")   # same 5 as the facts
     loc = (sq.get("successful_logins") or [{}])[0].get("location") or inc["title"].split(" from ")[-1].split(" Across")[0]
     parts = []
     oks = sq.get("successful_logins", [])

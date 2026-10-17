@@ -25,8 +25,8 @@ ollama pull llama3.2:3b      # ~2 GB, once
 ollama serve                 # or just open the Ollama app
 ```
 
-The 5 dataset CSVs go in `data/` (`authentication_logs.csv`, `transactions.csv`, `users_devices.csv`,
-`threat_indicators.csv`, `api_logs.csv`).
+The 5 dataset CSVs are in `data/` (`authentication_logs.csv`, `transactions.csv`, `users_devices.csv`,
+`threat_indicators.csv`, `api_logs.csv`), with the answer key `ground_truth_*.csv` (read only by `evaluate.py`).
 
 ## 2. Run the pipeline
 
@@ -37,10 +37,12 @@ Run in this order from the repo root. Each step reads the previous step's output
 | 1. Clean data | `python3 backend/ml/preprocess.py` | ~5 s | `data/processed/*.csv`, `output/preprocessing_report.json` |
 | 2. Features | `python3 backend/ml/features.py` | ~10 s | `output/auth_features.csv`, `output/txn_features.csv` |
 | 3. Model + SHAP | `python3 backend/ml/model.py` | ~40 s | `output/scored_auth.csv`, `output/scored_txn.csv`, `output/iforest_*.joblib` |
-| 4. Incidents | `python3 backend/ml/incidents.py` | ~5 s | `output/incidents.json`, `output/watchlist.json` |
+| 4. Incidents (hybrid) | `python3 backend/ml/incidents.py` | ~15 s | `output/incidents.json`, `output/watchlist.json` |
 | 5. Reports (LLM) | `python3 backend/ml/summarize.py` | ~5-10 s per report | `output/reports.json` |
 
-`summarize.py` does all critical + high incidents by default (43 today) and caches: a rerun only generates
+Step 4 also runs Aarushi's rule engine (`fsia_cyber/rules.py`) and merges its hits in; `--no-rules` gives ML only.
+
+`summarize.py` does all critical + high incidents by default (75 today) and caches: a rerun only generates
 missing reports. Options: `--all`, `--id INC-2026-0081`, `--sev medium`, `--force`.
 
 `backend/ml/output/` and `data/processed/` are git-ignored: rerun the scripts to regenerate them.
@@ -49,7 +51,7 @@ missing reports. Options: `--all`, `--id INC-2026-0081`, `--sev medium`, `--forc
 
 ### `GET /incidents` -> `output/incidents.json`
 
-A list of incidents, sorted by risk (highest first). The first 11 fields match the frontend's mock
+A list of incidents (203 today), sorted by risk (highest first). The first 11 fields match the frontend's mock
 `ALL` array in `IncidentsPage.tsx`, so the page can use them as-is.
 
 | Field | Example | Meaning |
@@ -65,7 +67,7 @@ A list of incidents, sorted by risk (highest first). The first 11 fields match t
 | `created` | `01:15` | Start time (HH:MM) |
 | `confidence` | `100` | Max anomaly score of its events, 0-100 |
 | `impact` | `99` | 0-100, from attack type, money moved, threat level |
-| `risk_score` | `99.5` | (confidence + impact) / 2; drives `sev` |
+| `risk_score` | `99.5` | (confidence + impact) / 2; drives the ML severity |
 | `start`, `end` | `2026-09-10T01:15:45` | ISO timestamps |
 | `users`, `ips`, `event_ids` | lists | Everything involved |
 | `event_count`, `amount_total` | `11`, `89100.0` | Amount in rupees |
@@ -73,7 +75,11 @@ A list of incidents, sorted by risk (highest first). The first 11 fields match t
 | `ip_details` | `[{"ip", "threat", "usual_for_user"}]` | Per IP; `usual_for_user: true` = the customer's own IP (never block it) |
 | `reasons` | `[{"feature", "impact", "text"}]` | SHAP: why it was flagged, e.g. `"IP on threat list (High)"` |
 | `sequence` | `{failed_logins, failed_window, successful_logins, transfers}` | The attack in order, with IDs, times, amounts, merchants |
-| `timeline` | `[{"time", "actor", "msg", "color"}]` | Newest first, same shape as the frontend's `TIMELINE` mock |
+| `timeline` | `[{"time", "actor", "msg", "color"}]` | Newest first, same shape as the frontend's `TIMELINE` mock; includes `Rule Engine` rows |
+| `detected_by` | `ml+rules` | `ml`, `rules` or `ml+rules` (hybrid detection) |
+| `rule_hits` | `[{"rule", "name", "events", "first"}]` | Rules that fired on this incident's events, e.g. `R_BRUTE_FORCE` |
+| `ml_severity`, `rule_severity` | `high`, `critical` | `sev` is the higher of the two (`rule_severity` is `null` if no rule fired) |
+| `ml_event_ids` | list | The events the model itself flagged (the rest came from rules) |
 
 `GET /incidents/{id}` = one item of that list.
 
@@ -100,7 +106,7 @@ On-demand report for an incident that has none yet:
 ```python
 from backend.ml.summarize import summarize
 import json
-inc = next(i for i in json.load(open("backend/ml/output/incidents.json")) if i["id"] == "INC-2026-0124")
+inc = next(i for i in json.load(open("backend/ml/output/incidents.json")) if i["id"] == "INC-2026-0079")
 report = summarize(inc)          # ~5-30 s, needs Ollama running
 ```
 
@@ -151,21 +157,28 @@ python3 backend/ml/inject_test.py     # ~4 min: 400 planted attacks, 5 seeds
 python3 backend/ml/evaluate.py        # prints all results, writes output/evaluation.json
 ```
 
-Current results: cash-out transfers caught 53/53; planted attacks 84% (easy 99%, stealthy 70%);
-precision 68% before noise filters, 86% after; 43/43 reports verified. Labelled review sheets are in `docs/`.
+Results:
 
-## 6. Pending: rules from Aarushi (hybrid detection)
+| Check | Result |
+|---|---|
+| **Ground truth** (answer key, 195 planted attacks) | ML only 194/195 (99.5%), 9 false-positive incidents of 202, all low severity. Hybrid 195/195, 9 of 203 |
+| Proxy test (no labels) | cash-out transfers caught 53/53 |
+| Own attack injection | 84% overall (easy 100%, stealthy 68%) |
+| Analyst review | precision 68% before noise filters, 86% after |
+| Reports | every published report passes the grounding check |
 
-When the rule engine is ready, it should write **`data/rule_alerts.csv`**:
+Labelled review sheets are in `docs/`. The answer key arrived after sections A-C were built, so those are the
+"no ground truth" checks; section D confirms them with real labels.
 
-```
-event_id,rule_id,rule_name,severity,timestamp
-E020221,R-101,Credential stuffing (>10 failures per IP per hour),high,2026-09-08 22:41:05
-T002429,R-104,Transfer > 10x user average,critical,2026-09-10 01:33:15
-```
+## 6. Hybrid detection (rules from Aarushi)
 
-`event_id` must be the dataset's own `event_id` (logins) or `transaction_id` (transfers). `incidents.py` will
-then merge rule hits into incidents and their timelines.
+`incidents.py` loads `fsia_cyber/rules.py` + `correlate.py` by file path and runs them on `data/`:
+
+- every rule alert's events are matched to the ML incidents -> `rule_hits`, `detected_by`, Rule Engine timeline rows
+- events a strong rule flagged but the model scored below threshold are added (rules-only catches: 1 today)
+- `sev` = higher of ML and rule severity; rule-confirmed incidents are never moved to the watch-list
+- `R_IMPOSSIBLE_TRAVEL_CANDIDATE` and `R_NEW_BENEFICIARY` are context only: they annotate but never create incidents
+- if `fsia_cyber/` is missing, the script prints a note and runs ML-only
 
 ## Files
 

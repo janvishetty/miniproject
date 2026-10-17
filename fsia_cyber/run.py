@@ -1,11 +1,11 @@
 """Pipeline: logs -> rules -> alerts -> correlation -> incidents (JSON for the AI module) -> evaluation.
-Usage: python run.py <data_dir> [out_dir]
+Usage (from repo root): python fsia_cyber/run.py [data_dir] [out_dir]   (defaults: data/ and fsia_cyber/output/)
 """
 import sys, os, json, pandas as pd
 import rules, correlate, evaluate
 
-D = sys.argv[1] if len(sys.argv) > 1 else "."
-OUT = sys.argv[2] if len(sys.argv) > 2 else "output"
+D = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 os.makedirs(OUT, exist_ok=True)
 
 # 1-3. detection + correlation + MITRE mapping (no ground truth used)

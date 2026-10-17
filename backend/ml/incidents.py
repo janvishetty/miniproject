@@ -13,9 +13,16 @@ Grouping:
                      other suspicious logins    -> Suspicious Login
                      transaction(s) only        -> Transaction Anomaly
 
+Hybrid detection: the rule engine in fsia_cyber/ (Aarushi) runs on the same raw data. Its alerts are merged in:
+  - every incident gets `rule_hits` (which rules fired on its events) and `detected_by` (ml / rules / ml+rules)
+  - events a strong rule flagged but the model scored below threshold are added to the pool (rules-only catches)
+  - severity = the higher of the ML severity and the rule engine's severity; rule-confirmed incidents skip the
+    noise filter. If fsia_cyber/ is missing the script still runs ML-only (`--no-rules` forces that).
+
 Run (from repo root):  python backend/ml/incidents.py
 """
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 
@@ -29,16 +36,56 @@ BASE_IMPACT = {"Account Takeover": 70, "Credential Stuffing": 60, "Brute Force":
 ASSET = {"login": "auth-service /api/v1/login", "txn": "payments-api /api/v1/transfer"}
 COLOR = {"ai": "#7c3aed", "auth_fail": "#dc2626", "auth_ok": "#d97706", "txn": "#2563eb", "intel": "#64748b"}
 THREAT_NAME = {1: "Low", 2: "Medium", 3: "High"}
+ROOT = Path(__file__).resolve().parents[2]
+RULE_NAMES = {   # no thresholds/numbers in the names: they reach the LLM facts and must not look like counts
+    "R_BRUTE_FORCE": "Brute force on one account", "R_FAIL_THEN_SUCCESS": "Failed logins then a success",
+    "R_NEW_DEVICE_LOGIN": "Login from an unregistered device", "R_NEW_LOCATION": "Login from a new IP and city",
+    "R_TI_MATCH": "Login from a Medium/High threat-intel IP", "R_IMPOSSIBLE_TRAVEL_CANDIDATE": "Possible impossible travel",
+    "R_LARGE_TXN": "Transfer far above the user's average", "R_NEW_BENEFICIARY": "Transfer to a new beneficiary",
+    "R_MULTI_ACCOUNT_IP": "One IP trying many accounts",
+}
+WEAK_RULES = {"R_IMPOSSIBLE_TRAVEL_CANDIDATE", "R_NEW_BENEFICIARY"}   # context only: annotate, never create incidents
+SEV_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+COLOR["rule"] = "#0891b2"
 
 
-def load(out: Path):
+def _module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)     # by file path: fsia_cyber has its own evaluate.py
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def rule_alerts(data_dir: Path):
+    """Run the fsia_cyber rule engine. Returns {event_id: [{rule, severity, attack}]} or None if unavailable."""
+    try:
+        R = _module("fsia_rules", ROOT / "fsia_cyber" / "rules.py")
+        C = _module("fsia_correlate", ROOT / "fsia_cyber" / "correlate.py")
+    except FileNotFoundError:
+        print("note: fsia_cyber/ not found - running ML-only")
+        return None
+    alerts = R.run_all(*R.load(str(data_dir)))
+    hits = {}
+    for inc in C.correlate(alerts):
+        for al in inc["alerts"]:
+            for e in al["event_ids"]:
+                hits.setdefault(e, []).append({"rule": al["rule"], "severity": inc["severity"].lower(),
+                                               "attack": inc["attack_type"]})
+    print(f"rule engine: {len(alerts)} alerts on {len(hits)} events")
+    return hits
+
+
+def load(out: Path, hits=None):
+    """Events the model flagged, plus events a strong rule flagged (hybrid). `by_ml` marks which is which."""
+    strong = {e for e, hs in (hits or {}).items() if any(h["rule"] not in WEAK_RULES for h in hs)}
     a = pd.read_csv(out / "scored_auth.csv", parse_dates=["timestamp"])
     t = pd.read_csv(out / "scored_txn.csv", parse_dates=["timestamp"])
-    a = a[a.anomaly_score >= AUTH_THRESHOLD].assign(kind="login", eid=lambda d: d.event_id, amount=0.0, merchant="")
-    t = t[t.anomaly_score >= TXN_THRESHOLD].assign(kind="txn", eid=lambda d: d.transaction_id)
+    a["by_ml"], t["by_ml"] = a.anomaly_score >= AUTH_THRESHOLD, t.anomaly_score >= TXN_THRESHOLD
+    a = a[a.by_ml | a.event_id.isin(strong)].assign(kind="login", eid=lambda d: d.event_id, amount=0.0, merchant="")
+    t = t[t.by_ml | t.transaction_id.isin(strong)].assign(kind="txn", eid=lambda d: d.transaction_id)
     cols = ["eid", "kind", "timestamp", "user_id", "ip_address", "device_id", "location", "status",
             "amount", "merchant", "anomaly_score", "top_reasons", "ip_threat_score", "is_new_device",
-            "failed_logins_user_1h", "beneficiary_added_24h", "ip_not_usual", "amount_ratio"]
+            "failed_logins_user_1h", "beneficiary_added_24h", "ip_not_usual", "amount_ratio", "by_ml"]
     for df in (a, t):
         for c in cols:
             if c not in df:
@@ -123,10 +170,24 @@ def timeline(g):
             rows.append({"time": hm(r.timestamp), "actor": "Payments API",
                          "msg": f"Transfer {r.eid} ₹{r.amount:,.0f} by {r.user_id} to {r.merchant} ({r.status})",
                          "color": COLOR["txn"]})
+    for rule, (ts, n) in sorted(rule_summary(g).items(), key=lambda kv: kv[1][0]):
+        rows.append({"time": hm(ts), "actor": "Rule Engine", "msg": f"Rule {rule} fired: {RULE_NAMES.get(rule, rule)}",
+                     "color": COLOR["rule"]})
+    rows.sort(key=lambda r: r["time"])
     rows.append({"time": hm(g.timestamp.max()), "actor": "AI Engine",
                  "msg": f"Correlated {len(g)} anomalous events (max anomaly score {g.anomaly_score.max():.0f})",
                  "color": COLOR["ai"]})
     return rows[::-1]   # newest first, same as frontend mock
+
+
+def rule_summary(g):
+    """{rule: (first time it fired in this incident, number of events)} from the `rule_hits` column."""
+    out = {}
+    for ts, hs in zip(g.timestamp, g.rule_hits):
+        for h in hs:
+            first, n = out.get(h["rule"], (ts, 0))
+            out[h["rule"]] = (min(first, ts), n + 1)
+    return out
 
 
 def reasons(g):
@@ -173,6 +234,13 @@ def build_incident(g, vector):
     impact = int(min(99, round(impact)))
     risk = 0.5 * confidence + 0.5 * impact
     sev = "critical" if risk >= 85 else "high" if risk >= 75 else "medium" if risk >= 65 else "low"
+    rules = rule_summary(g)
+    rule_sev = max((h["severity"] for hs in g.rule_hits for h in hs if h["rule"] not in WEAK_RULES),
+                   key=SEV_RANK.get, default="low")
+    ml_sev = sev
+    if SEV_RANK[rule_sev] > SEV_RANK[sev]:
+        sev = rule_sev
+    by_ml, by_rule = bool(g.by_ml.any()), any(r not in WEAK_RULES for r in rules)
     main_ip = g.ip_address.mode().iat[0]
     return {
         "sev": sev, "status": "OPEN", "title": title(vector, g),
@@ -189,15 +257,26 @@ def build_incident(g, vector):
                         "usual_for_user": bool((d.ip_not_usual == 0).all())}
                        for ip, d in g.groupby("ip_address")],
         "reasons": reasons(g), "sequence": sequence(g), "timeline": timeline(g),
+        # hybrid detection
+        "detected_by": "ml+rules" if by_ml and by_rule else "ml" if by_ml else "rules",
+        "ml_severity": ml_sev, "rule_severity": rule_sev if by_rule else None,
+        "rule_hits": [{"rule": r, "name": RULE_NAMES.get(r, r), "events": n, "first": ts.isoformat()}
+                      for r, (ts, n) in sorted(rules.items(), key=lambda kv: kv[1][0])],
+        "ml_event_ids": g.loc[g.by_ml, "eid"].tolist(),
     }
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", default=str(Path(__file__).resolve().parent / "output"))
-    out = Path(p.parse_args().out)
+    p.add_argument("--data", default=str(ROOT / "data"), help="raw CSVs for the rule engine")
+    p.add_argument("--no-rules", action="store_true", help="ML only (skip the fsia_cyber rule engine)")
+    a = p.parse_args()
+    out = Path(a.out)
 
-    ev = load(out)
+    hits = None if a.no_rules else rule_alerts(Path(a.data))
+    ev = load(out, hits)
+    ev["rule_hits"] = ev.eid.map(lambda e: (hits or {}).get(e, []))
     incidents = []
 
     # pass 1: credential stuffing (one IP, many accounts, short window)
@@ -216,7 +295,7 @@ def main():
         for part in split_by_order(g):
             v = classify(part)
             inc = build_incident(part, v)
-            inc["_noise"] = noise_reason(part, v)
+            inc["_noise"] = None if inc["rule_severity"] else noise_reason(part, v)   # rule-confirmed: keep
             incidents.append(inc)
 
     incidents.sort(key=lambda x: x["start"])
@@ -237,6 +316,7 @@ def main():
     wc = Counter(w["vector"] for w in watch)
     print(f"{len(ev)} anomalous events -> {len(df)} incidents  (+{len(watch)} low-value moved to watchlist.json: "
           + ", ".join(f"{n} {v}" for v, n in wc.items()) + ")\n")
+    print("detected by:", df.detected_by.value_counts().to_dict(), "\n")
     print(pd.crosstab(df.vector, df.sev)[[s for s in ["critical", "high", "medium", "low"] if s in df.sev.values]], "\n")
     for x in incidents[:8]:
         print(f"{x['id']}  {x['sev']:8} conf={x['confidence']:3} impact={x['impact']:3}  {x['title']}")

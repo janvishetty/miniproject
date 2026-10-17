@@ -14,10 +14,15 @@ No answer key exists for this dataset, so we use honest, non-circular checks:
   C. Analyst review (review_sheet.py): a human labels a random stratified sample of incidents
      real / false_alarm / unsure -> precision per attack type, weighted by how common each type is.
 
+  D. Ground truth (added later): the dataset's answer key data/ground_truth_*.csv (195 planted attack scenarios)
+     arrived with the rule engine. It is read ONLY here, never by the model or the rules. Scores ML-only,
+     rules-only and the hybrid incident list: scenarios caught, false-positive incidents, right attack type.
+
 Run (from repo root):  python backend/ml/evaluate.py      -> prints tables, writes output/evaluation.json
 """
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -65,6 +70,50 @@ def proxy_cashout(out: Path):
                              "score_range": [float(app.anomaly_score.min()), float(app.anomaly_score.max())]
                              if len(app) else None},
     }
+
+
+# which of our attack types counts as the right label for each ground-truth scenario type
+GT_VECTOR = {"brute_force": {"Brute Force"}, "account_takeover": {"Account Takeover"},
+             "multi_account_ip": {"Credential Stuffing"}, "large_transaction": {"Transaction Anomaly"},
+             "suspicious_login": {"Suspicious Login"}, "suspicious_ip": {"Suspicious Login"}}
+
+
+def ground_truth(incidents, data: Path):
+    """Score incident lists against the answer key. Scenario IDs repeat across types, so the key is (id, type)."""
+    ge = pd.read_csv(data / "ground_truth_events.csv")
+    ge = ge[ge.table != "api"]                     # api_logs are not a detection input
+    gs = pd.read_csv(data / "ground_truth_scenarios.csv")
+    key = dict(zip(ge.event_id, zip(ge.scenario_id, ge.scenario_type)))
+    scen = list(zip(gs.scenario_id, gs.scenario_type))
+
+    def score(name, incs, ev_field):
+        hit, fp, typed = {}, [], set()
+        for i in incs:
+            s = {key[e] for e in i[ev_field] if e in key}
+            if not s:
+                fp.append(i)
+            for sk in s:
+                hit.setdefault(sk, []).append(i)
+                if i["vector"] in GT_VECTOR[sk[1]]:
+                    typed.add(sk)
+        per_type = []
+        for t, n in Counter(t for _, t in scen).items():
+            sks = [sk for sk in scen if sk[1] == t]
+            per_type.append({"type": t, "scenarios": n, "caught": sum(sk in hit for sk in sks),
+                             "right_type": sum(sk in typed for sk in sks)})
+        caught = sum(sk in hit for sk in scen)
+        return {"name": name, "incidents": len(incs), "scenarios": len(scen), "caught": caught,
+                "recall": round(caught / len(scen), 3), "false_positive_incidents": len(fp),
+                "precision": round(1 - len(fp) / max(len(incs), 1), 3),
+                "false_positives_by_severity": dict(Counter(i["sev"] for i in fp)),
+                "missed": [f"{a} ({b})" for a, b in scen if (a, b) not in hit], "per_type": per_type}
+
+    has_rules = any("detected_by" in i for i in incidents)
+    ml = [i for i in incidents if i.get("ml_event_ids", i["event_ids"])]
+    res = [score("ML only", ml, "ml_event_ids" if has_rules else "event_ids")]
+    if has_rules:
+        res.append(score("Hybrid (ML + rules)", incidents, "event_ids"))
+    return res
 
 
 def main():
@@ -150,6 +199,26 @@ def main():
                   f"(+{len(watch)} moved to watch-list) (unsure: {r2['unsure']})")
             r2["weighted_precision"] = round(w2, 3)
             result["review_round2_after_filters"] = r2
+
+    # D. ground truth
+    data = Path(__file__).resolve().parents[2] / "data"
+    print("\nD. GROUND TRUTH (answer key data/ground_truth_*.csv - used only here)")
+    if (data / "ground_truth_scenarios.csv").exists():
+        D = ground_truth(incidents, data)
+        for r in D:
+            print(f"   {r['name']:20} caught {r['caught']}/{r['scenarios']} scenarios ({r['recall']:.1%})  | "
+                  f"{r['false_positive_incidents']} false-positive incidents of {r['incidents']} "
+                  f"(precision {r['precision']:.1%}, severity {r['false_positives_by_severity']})  | missed: {r['missed'] or 'none'}")
+        print(f"   {'':20}" + "".join(f"{r['name']:>26}" for r in D))
+        print(f"   {'scenario type':20}" + "".join(f"{'caught  right type':>26}" for r in D))
+        for k in range(len(D[0]["per_type"])):
+            t = D[0]["per_type"][k]["type"]
+            print(f"   {t:20}" + "".join(f"{str(x['caught']) + '/' + str(x['scenarios']):>14}{str(x['right_type']) + '/' + str(x['scenarios']):>12}"
+                                         for x in (next(p for p in r['per_type'] if p['type'] == t) for r in D)))
+        print("   rules only (fsia_cyber/run.py): see fsia_cyber/output/evaluation_summary.csv")
+        result["ground_truth"] = D
+    else:
+        print("   no answer key in data/")
 
     (out / "evaluation.json").write_text(json.dumps(result, indent=2))
     print(f"\nsaved -> {out / 'evaluation.json'}")

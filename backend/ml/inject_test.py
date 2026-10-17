@@ -186,7 +186,7 @@ def one_run(raw, seed, per, busy, work):
          "--report", str(out / "preprocessing_report.json")])
     run([str(ML / "features.py"), "--data", str(work / "processed"), "--out", str(out)])
     run([str(ML / "model.py"), "--features", str(out), "--out", str(out)])
-    run([str(ML / "incidents.py"), "--out", str(out)])
+    run([str(ML / "incidents.py"), "--out", str(out), "--no-rules"])   # measures the ML alone
 
     incidents = json.loads((out / "incidents.json").read_text())
     watch = {e for w in json.loads((out / "watchlist.json").read_text()) for e in w["event_ids"]}

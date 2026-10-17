@@ -1,9 +1,9 @@
-"""Per-rule accuracy table. Run AFTER detection: python rule_metrics.py <data_dir> [out_dir]"""
-import sys, pandas as pd
+"""Per-rule accuracy table. Run: python fsia_cyber/rule_metrics.py [data_dir] [out_dir]   (defaults: data/ and fsia_cyber/output/)"""
+import os, sys, pandas as pd
 import rules, correlate
 
-D = sys.argv[1] if len(sys.argv) > 1 else "."
-OUT = sys.argv[2] if len(sys.argv) > 2 else "output"
+D = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 
 a, t, u, ti = rules.load(D)
 alerts = rules.run_all(a, t, u, ti)
