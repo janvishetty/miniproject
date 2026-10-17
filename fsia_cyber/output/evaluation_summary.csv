@@ -1,0 +1,7 @@
+scenario_type,scenarios,detected,rule_recall,mitre_ok,severity_ok,detection_rate
+account_takeover,30,30,1.0,30,30,1.0
+brute_force,40,40,1.0,40,40,1.0
+large_transaction,40,40,1.0,40,40,1.0
+multi_account_ip,15,15,0.978,15,15,1.0
+suspicious_ip,30,30,1.0,30,30,1.0
+suspicious_login,40,40,1.0,40,40,1.0
