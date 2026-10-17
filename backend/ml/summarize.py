@@ -31,7 +31,7 @@ MODEL = os.environ.get("SENTRA_LLM", "llama3.2:3b")   # try another Ollama model
 
 # Mapping done in code, not by the LLM, so it can't be hallucinated
 MITRE = {
-    "Account Takeover": ["T1078 Valid Accounts", "T1110 Brute Force"],
+    "Account Takeover": ["T1110 Brute Force", "T1078 Valid Accounts", "T1657 Financial Theft"],   # = rule engine + answer key
     "Credential Stuffing": ["T1110.004 Credential Stuffing"],
     "Brute Force": ["T1110.001 Password Guessing"],
     "Suspicious Login": ["T1078 Valid Accounts"],
@@ -473,6 +473,16 @@ def main():
             if not g["grounded"] or r.get("title") != inc["title"]:
                 stale.append(inc["id"])
                 print(f"   re-check failed for cached {inc['id']}: {g['unverified'] or 'incident changed'} -> regenerating")
+    # code-built fields (MITRE, containment, 5 Ws, severity, rule hits) are refreshed on cached reports every run,
+    # so a change in the playbook or the rule merge reaches them without regenerating the LLM text
+    for inc in todo:
+        r = cache.get(inc["id"])
+        if r and inc["id"] not in stale:
+            r.update({"sev": inc["sev"], "vector": inc["vector"], "confidence": inc["confidence"], "impact": inc["impact"],
+                      "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
+                      "containment_actions": containment_actions(inc),
+                      "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", [])})
+    path.write_text(json.dumps(list(cache.values()), indent=2, ensure_ascii=False))
     pending = [i for i in todo if a.force or i["id"] not in cache or i["id"] in stale
                or (a.retry_templates and cache[i["id"]].get("source") == "template")]
     print(f"{len(todo)} incidents selected | {len(todo) - len(pending)} cached & re-verified | {len(pending)} to generate")

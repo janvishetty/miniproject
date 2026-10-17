@@ -108,11 +108,30 @@ def ground_truth(incidents, data: Path):
                 "false_positives_by_severity": dict(Counter(i["sev"] for i in fp)),
                 "missed": [f"{a} ({b})" for a, b in scen if (a, b) not in hit], "per_type": per_type}
 
+    exp_sev = dict(zip(scen, gs.expected_severity.str.lower()))
+    rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+    def severity(incs, field):
+        """Severity of the incident(s) holding each scenario vs the answer key's expected severity."""
+        c = Counter()
+        for i in incs:
+            for sk in {key[e] for e in i["event_ids"] if e in key}:
+                d = rank[i.get(field, i["sev"])] - rank[exp_sev[sk]]
+                c["match" if d == 0 else "higher" if d > 0 else "lower"] += 1
+        return dict(c)
+
     has_rules = any("detected_by" in i for i in incidents)
     ml = [i for i in incidents if i.get("ml_event_ids", i["event_ids"])]
     res = [score("ML only", ml, "ml_event_ids" if has_rules else "event_ids")]
+    res[0]["severity_vs_key"] = severity(incidents, "ml_severity" if has_rules else "sev")
     if has_rules:
         res.append(score("Hybrid (ML + rules)", incidents, "event_ids"))
+        res[1]["severity_vs_key"] = severity(incidents, "sev")
+        # how the two detectors relate: false positives by who detected the incident
+        fp = {i["id"] for i in incidents if not {key[e] for e in i["event_ids"] if e in key}}
+        res[1]["false_positives_by_detector"] = {d: f"{sum(i['id'] in fp for i in incidents if i['detected_by'] == d)}"
+                                                    f" of {sum(i['detected_by'] == d for i in incidents)}"
+                                                 for d in ("ml+rules", "ml", "rules")}
     return res
 
 
@@ -215,6 +234,12 @@ def main():
             t = D[0]["per_type"][k]["type"]
             print(f"   {t:20}" + "".join(f"{str(x['caught']) + '/' + str(x['scenarios']):>14}{str(x['right_type']) + '/' + str(x['scenarios']):>12}"
                                          for x in (next(p for p in r['per_type'] if p['type'] == t) for r in D)))
+        for r in D:
+            sv = r["severity_vs_key"]
+            print(f"   severity vs answer key, {r['name']:20}: {sv.get('match', 0)} match, {sv.get('higher', 0)} higher, "
+                  f"{sv.get('lower', 0)} lower")
+        if len(D) > 1:
+            print(f"   false positives by detector: {D[1]['false_positives_by_detector']}")
         print("   rules only (fsia_cyber/run.py): see fsia_cyber/output/evaluation_summary.csv")
         result["ground_truth"] = D
     else:
