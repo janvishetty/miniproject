@@ -50,6 +50,16 @@ missing reports. Options: `--all`, `--id INC-2026-0081`, `--sev medium`, `--forc
 
 ## 3. What the backend serves
 
+**Contract frozen (2026-10-17).** The field names below, in `incidents.json`, `reports.json`, `dashboard.json`,
+`watchlist.json`, `scored_*.csv` and `rule_alerts.csv`, will not be renamed or removed. New fields may be
+added. Code reading them should ignore unknown fields. A sample of every file: `python3 backend/ml/export_samples.py`
+-> `output/samples_for_backend.md`.
+
+- `data/*.csv` are final and never written by the pipeline (cleaned copies go to `data/processed/`), so
+  E…/T…/A… IDs are stable. Every `event_ids` entry exists in the raw CSVs; `preprocessing_report.json` lists
+  counts per check and `dropped_ids` when anything is removed (0 rows on this dataset).
+- No prompts; a failed step exits non-zero. Ollama is needed only by `summarize.py` and `copilot.answer()`.
+
 ### `GET /incidents` -> `output/incidents.json`
 
 A list of incidents (194 today), sorted by risk (highest first). The first 11 fields match the frontend's mock
@@ -247,5 +257,6 @@ event says why in `flag_reason` (`model`, `guard: amount`, `guard: payee`, `guar
 | `summarize.py` | Verified LLM incident reports |
 | `copilot.py` | Verified LLM chat answers |
 | `frontend_data.py` | `dashboard.json` for the Dashboard page |
+| `export_samples.py` | Sample of every output for the backend (`output/samples_for_backend.md`) |
 | `evaluate.py`, `inject_test.py`, `review_sheet.py` | Evaluation |
 | `requirements.txt` | Python packages |

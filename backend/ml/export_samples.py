@@ -30,8 +30,8 @@ def main():
     rp = OUT / "reports.json"
     if rp.exists():
         reps = json.loads(rp.read_text())
-        r = next((x for x in reps if x["id"] == inc[0]["id"]), reps[0])
-        parts.append(block(f"reports.json (1 of {len(reps)})", "json", json.dumps(r, indent=2, ensure_ascii=False)))
+        r = next((x for x in reps if x["id"] == inc[0]["id"]), reps[0] if reps else None)
+        if r: parts.append(block(f"reports.json (1 of {len(reps)})", "json", json.dumps(r, indent=2, ensure_ascii=False)))
     w = json.loads((OUT / "watchlist.json").read_text())
     parts.append(block(f"watchlist.json (1 of {len(w)})", "json", json.dumps(w[0], indent=2, ensure_ascii=False)))
     d = json.loads((OUT / "dashboard.json").read_text())
