@@ -54,6 +54,18 @@ def _job_public(record: JobRecord) -> dict:
     }
 
 
+def _audit_details(record: JobRecord) -> dict:
+    """Numbers only: kind, status, params and per-table counts. No row values."""
+    details = {"kind": record.kind, "status": record.status, "params": record.params}
+    if record.report:
+        details["tables"] = [
+            {"table": t["table"], "rows_read": t["rows_read"],
+             "rows_written": t["rows_written"], "rejected_count": t["rejected_count"]}
+            for t in record.report["tables"]
+        ]
+    return details
+
+
 def _run_job(job_id: str, runner) -> None:
     global _active_job_id
     record = _jobs[job_id]
@@ -67,7 +79,7 @@ def _run_job(job_id: str, runner) -> None:
     finally:
         record.finished_at = datetime.now(timezone.utc).isoformat()
         audit.write(record.actor_id, "ingest.job_finished", "ingest_job", job_id,
-                    {"kind": record.kind, "status": record.status, "params": record.params})
+                    _audit_details(record))
         with _lock:
             if _active_job_id == job_id:
                 _active_job_id = None

@@ -15,13 +15,13 @@ os.environ.update({
 import pytest
 from fastapi.testclient import TestClient
 
-from app import config, database
+from app import config, database, security
 from app.rate_limit import limiter
 from app.routers import auth as auth_router
 
 
 class FakeAuthError(Exception):
-    pass
+    status = 401   # like the real library: an invalid token / credential is a 4xx
 
 
 class FakeDuplicate(Exception):
@@ -167,6 +167,7 @@ def fake(monkeypatch):
     monkeypatch.setattr(database, "new_anon_client", lambda: f)
     monkeypatch.setattr(database, "get_token_verifier", lambda: f)
     monkeypatch.setattr(auth_router, "AUTH_ERRORS", (FakeAuthError,))
+    monkeypatch.setattr(security, "AUTH_ERRORS", (FakeAuthError,))
     return f
 
 

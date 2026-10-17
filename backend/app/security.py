@@ -20,6 +20,18 @@ from pydantic import BaseModel
 from app import database
 from app.constants import ROLES
 
+# The Supabase library renamed its error module between versions.
+# AUTH_ERRORS = "the library says this token / credential is not valid".
+try:  # newer versions
+    from supabase_auth.errors import AuthError as _AuthError  # type: ignore
+    AUTH_ERRORS: tuple = (_AuthError,)
+except ImportError:
+    try:  # older versions
+        from gotrue.errors import AuthError as _AuthError  # type: ignore
+        AUTH_ERRORS = (_AuthError,)
+    except ImportError:
+        AUTH_ERRORS = ()  # cannot tell them apart -> every failure is treated as an outage
+
 log = logging.getLogger("fsia.security")
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -37,6 +49,21 @@ class CurrentUser(BaseModel):
 def _unauthorized(message: str = "Not authenticated") -> HTTPException:
     return HTTPException(status_code=401, detail=message,
                          headers={"WWW-Authenticate": "Bearer"})
+
+
+def _unavailable() -> HTTPException:
+    return HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+
+def _is_token_rejection(exc: Exception) -> bool:
+    """True only when Supabase answered "this token is not valid" (a 4xx).
+    Network errors, Supabase 5xx and 429 (rate limited) are outages, not bad tokens."""
+    if not isinstance(exc, AUTH_ERRORS):
+        return False
+    status = getattr(exc, "status", None)
+    if isinstance(status, int) and (status >= 500 or status == 429):
+        return False
+    return type(exc).__name__ != "AuthRetryableError"
 
 
 def load_profile(user_id: str) -> dict | None:
@@ -65,12 +92,19 @@ def get_current_user(
     try:
         result = database.get_token_verifier().auth.get_user(creds.credentials)
         auth_user = getattr(result, "user", None)
-    except Exception:  # invalid, expired or tampered token
-        raise _unauthorized("Invalid or expired token") from None
+    except Exception as exc:  # noqa: BLE001
+        if _is_token_rejection(exc):  # invalid, expired or tampered token
+            raise _unauthorized("Invalid or expired token") from None
+        log.error("token check failed (%s)", type(exc).__name__)
+        raise _unavailable() from None
     if auth_user is None:
         raise _unauthorized("Invalid or expired token")
 
-    profile = load_profile(str(auth_user.id))
+    try:
+        profile = load_profile(str(auth_user.id))
+    except Exception as exc:  # noqa: BLE001
+        log.error("profile lookup failed (%s)", type(exc).__name__)
+        raise _unavailable() from None
     if profile is None:
         raise HTTPException(status_code=403, detail="Account profile not found")
     return profile_to_user(profile)
