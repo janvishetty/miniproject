@@ -50,7 +50,8 @@ PROMPT = """You are Sentra's SOC copilot for a FinTech security team. Answer the
 Rules:
 - Use only incident IDs, user IDs, IPs, transaction IDs, amounts (Indian rupees, written with the rupee sign), times
   and places that appear in FACTS. If FACTS do not contain the answer, say so in one sentence.
-- Cite the incident ID for every incident you mention. Be concise: at most about 150 words.
+- Cite the incident ID for every incident you mention. When the question is about one user, IP, transaction or
+  incident, cover EVERY incident listed in FACTS (one sentence each) - leaving one out is an error. Be concise: at most about 150 words.
 - Do NOT write containment or remediation steps (blocking, locking, freezing...): they are added automatically
   after your answer, per incident. Do not invent tools, patches, people or deadlines.
 - Never mix incidents: a user, IP or transaction belongs only to the incident it is listed under in FACTS.
@@ -480,6 +481,13 @@ def answer(question, max_attempts=3):
         text = ask_text(p, temperature=0.1 if k == 1 else 0.4).strip()
         text = re.sub(r"\s*<br\s*/?>\s*", "\n", text)          # the frontend renders markdown, not html
         g = check(text, vfacts, sel) if text else {"grounded": False, "unverified": [], "checked": 0}
+        # questions about a specific user / IP / transaction / incident must cover EVERY incident it appears in
+        if any(w in ("user/ip/transaction", "incident id") for w in why):
+            skipped = [i["id"] for i in sel if i["id"] not in text]
+            if skipped:
+                g["unverified"] = sorted(g["unverified"] + [f"leaves out {', '.join(skipped)} (all {len(sel)} incidents "
+                                                            f"must be covered)"])
+                g["grounded"] = False
         if any(i.get("sequence", {}).get("successful_logins") for i in sel) and \
                 re.search(r"\bfailed because\b|\bwas unsuccessful because\b", text, re.I):
             g["unverified"] = sorted(g["unverified"] + ["explains a failure, but a login succeeded"])
