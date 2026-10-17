@@ -441,6 +441,34 @@ OWNER_Q = re.compile(r"\b(?:themselves|himself|herself|the customer (?:did|made|
 MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
 
 
+def ranking_answer(metric, sel, incidents, question):
+    """Superlative questions answered exactly from the data, ties included."""
+    vecs = sorted({i["vector"] for i in sel})
+    scope = f"{vecs[0]} incidents" if len(vecs) == 1 and any(w in question.lower() for words in VECTOR_WORDS.values()
+                                                             for w in words) else "incidents"
+    sevs = {i["sev"] for i in sel}
+    if len(sevs) == 1 and next(iter(sevs)) in question.lower():
+        scope = f"{next(iter(sevs))} {scope}"
+    val = {"money": lambda i: i["amount_total"], "accounts": lambda i: len(i["users"]),
+           "earliest": lambda i: i["start"], "latest": lambda i: i["start"]}[metric]
+    show = {"money": lambda i: f"₹{i['amount_total']:,.0f} moved",
+            "accounts": lambda i: f"{len(i['users'])} accounts from {i['ip']}",
+            "earliest": lambda i: f"started {i['start'].replace('T', ' ')[:16]}",
+            "latest": lambda i: f"started {i['start'].replace('T', ' ')[:16]}"}[metric]
+    best = val(sel[0])
+    tied = [i for i in sel if val(i) == best]
+    label = {"money": "most money moved", "accounts": "most accounts targeted",
+             "earliest": "earliest", "latest": "most recent"}[metric]
+    if len(tied) > 1:
+        head = (f"Tie for {label} among {scope}: " + "; ".join(f"**{i['id']}** ({show(i)}, {i['vector']})" for i in tied)
+                + ".")
+    else:
+        i = tied[0]
+        head = f"The {label} among {scope}: **{i['id']}** - {i['title']} ({show(i)}, users {', '.join(i['users'][:5])})."
+    rows = "\n".join(f"{n}. {i['id']} - {show(i)} - {i['vector']}, {i['sev']}" for n, i in enumerate(sel, 1))
+    return f"{head}\n\nTop {len(sel)} by {label}:\n{rows}"
+
+
 def premise_notes(question, sel):
     """Facts written by code when the question assumes something false. The LLM answer comes after them."""
     notes = []
@@ -490,6 +518,13 @@ def answer(question, max_attempts=3):
     incidents, reports = load()
     sel, why, with_stats = retrieve(question, incidents)
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
+    ranked = next((w.split("ranked by ")[1] for w in why if w.startswith("ranked by")), None)
+    if ranked and sel:            # "most / first / largest": exact answer from code (the 3B model mis-ranks lists)
+        text = ranking_answer(ranked, sel, incidents, question)
+        top = [i for i in sel if i["id"] in text.split("\n\n")[0]]
+        return {"question": question, "answer": text + containment_section(top), "incidents": [i["id"] for i in sel],
+                "retrieved_by": why, "source": "facts", "grounding": {"grounded": True, "unverified": [], "checked": 0},
+                "attempts": [], "seconds": round(time.time() - t0, 1)}
     notes = premise_notes(question, sel)
     if notes and not sel:          # e.g. "which accounts were locked?" with no incident named: the note IS the answer
         return {"question": question, "answer": " ".join(notes), "incidents": [], "retrieved_by": why + ["premise"],
