@@ -38,3 +38,8 @@ venv/
 # ML generated outputs (scored events, trained models) - rerun scripts to regenerate
 backend/ml/output/
 data/processed/
+
+# Python test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
