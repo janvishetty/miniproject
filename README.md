@@ -33,6 +33,7 @@ python3 backend/ml/features.py
 python3 backend/ml/model.py
 python3 backend/ml/incidents.py        # runs the fsia_cyber rules too (hybrid)
 python3 backend/ml/summarize.py        # needs Ollama + llama3.2:3b
+python3 backend/ml/frontend_data.py    # dashboard.json for the Dashboard page
 python3 backend/ml/evaluate.py
 ```
 

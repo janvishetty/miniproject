@@ -341,6 +341,25 @@ def check(text, facts, sel, llm=True):
     return g
 
 
+def welcome():
+    """Opening message for the Copilot page (replaces the mock ANSWERS.default). Built by code from the data, so
+    it is instant, needs no Ollama and is always correct. Uses the page's renderText format (**bold** lines)."""
+    incidents, _ = load()
+    sev = Counter(i["sev"] for i in incidents)
+    vec = Counter(i["vector"] for i in incidents)
+    crit = [i for i in incidents if i["sev"] == "critical"][:3]
+    money = sum(i["amount_total"] for i in incidents if i["vector"] == "Account Takeover")
+    lines = ["**Security Posture Summary**", "",
+             f"{len(incidents)} open incidents: **{sev.get('critical', 0)} critical**, {sev.get('high', 0)} high, "
+             f"{sev.get('medium', 0)} medium, {sev.get('low', 0)} low.",
+             "By type: " + ", ".join(f"{v} {k}" for k, v in vec.most_common()) + ".",
+             f"Amount in account-takeover transfers: **₹{money:,.0f}**.", "", "**Highest-risk incidents**"]
+    lines += [f"{n}. **{i['id']}** - {i['title']} (risk {i['risk_score']:.0f})" for n, i in enumerate(crit, 1)]
+    lines += ["", "Ask me about any incident ID, user (U0214), IP, transaction (T002428) or attack type."]
+    return {"question": None, "answer": "\n".join(lines), "incidents": [i["id"] for i in crit],
+            "source": "facts", "grounding": {"grounded": True, "unverified": []}, "seconds": 0.0}
+
+
 def answer(question, max_attempts=3):
     t0 = time.time()
     incidents, reports = load()

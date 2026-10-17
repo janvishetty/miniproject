@@ -275,6 +275,34 @@ def build_incident(g, vector):
     }
 
 
+def add_frontend_fields(incidents, data_dir: Path):
+    """Fields the Incidents page shows that aren't detection output:
+    threat_intel / threat_actor -> the "Threat Actor" card (from the threat feed, worst-level IP of the incident)
+    ai_summary                  -> the "AI Analysis" paragraph for EVERY incident (code-built, verified facts;
+                                   the backend can swap in the LLM summary from reports.json when one exists)"""
+    try:
+        from . import summarize as S
+    except ImportError:
+        import summarize as S
+    ti_path = data_dir / "processed" / "threat_indicators.csv"
+    ti = pd.read_csv(ti_path if ti_path.exists() else data_dir / "threat_indicators.csv")
+    rank = {"High": 3, "Medium": 2, "Low": 1}
+    ti = ti.assign(r=ti.threat_level.map(rank)).sort_values("r", ascending=False).drop_duplicates("ip_address")
+    feed = ti.set_index("ip_address")
+    for inc in incidents:
+        hits = [ip for ip in inc["ips"] if ip in feed.index]
+        if hits:
+            ip = max(hits, key=lambda x: feed.loc[x, "r"])
+            f = feed.loc[ip]
+            inc["threat_intel"] = {"ip": ip, "level": f.threat_level, "description": f.description, "source": f.source,
+                                   "last_seen": f.last_seen}
+            inc["threat_actor"] = f"{f.description} ({f.source}, {f.threat_level})"
+        else:
+            inc["threat_intel"] = None
+            inc["threat_actor"] = "Unknown - IP not on any threat feed"
+        inc["ai_summary"] = S.template_report(inc)[0]
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", default=str(Path(__file__).resolve().parent / "output"))
@@ -312,6 +340,8 @@ def main():
         inc["id"] = f"INC-2026-{i:04d}"
     incidents.sort(key=lambda x: -x["risk_score"])
     incidents = [{"id": x.pop("id"), **x} for x in incidents]
+
+    add_frontend_fields(incidents, Path(a.data))
 
     # IDs are assigned BEFORE filtering, so kept incidents keep the same ID with or without the filter
     watch = [{"id": x["id"], "vector": x["vector"], "reason": x["_noise"], "users": x["users"], "ips": x["ips"],

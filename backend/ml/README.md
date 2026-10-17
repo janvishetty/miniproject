@@ -39,6 +39,7 @@ Run in this order from the repo root. Each step reads the previous step's output
 | 3. Model + SHAP | `python3 backend/ml/model.py` | ~40 s | `output/scored_auth.csv`, `output/scored_txn.csv`, `output/iforest_*.joblib` |
 | 4. Incidents (hybrid) | `python3 backend/ml/incidents.py` | ~15 s | `output/incidents.json`, `output/watchlist.json` |
 | 5. Reports (LLM) | `python3 backend/ml/summarize.py` | ~5-10 s per report | `output/reports.json` |
+| 6. Dashboard data | `python3 backend/ml/frontend_data.py` | ~2 s | `output/dashboard.json` |
 
 Step 4 also runs Aarushi's rule engine (`fsia_cyber/rules.py`) and merges its hits in; `--no-rules` gives ML only.
 
@@ -80,6 +81,9 @@ A list of incidents (203 today), sorted by risk (highest first). The first 11 fi
 | `rule_hits` | `[{"rule", "name", "events", "first"}]` | Rules that fired on this incident's events, e.g. `R_BRUTE_FORCE` |
 | `ml_severity`, `rule_severity` | `high`, `critical` | `sev` is the higher of the two (`rule_severity` is `null` if no rule fired) |
 | `ml_event_ids` | list | The events the model itself flagged (the rest came from rules) |
+| `threat_actor` | `Linked to credential-stuffing campaign (Partner bank share, High)` | For the "Threat Actor" card; `Unknown - IP not on any threat feed` if none |
+| `threat_intel` | `{"ip", "level", "description", "source", "last_seen"}` or `null` | The threat-feed entry behind `threat_actor` |
+| `ai_summary` | `8 failed logins from 45.12.100.55 against U0214 …` | "AI Analysis" text for EVERY incident (code-built, verified). If `reports.json` has this ID, show its LLM `summary` instead |
 
 `GET /incidents/{id}` = one item of that list.
 
@@ -134,10 +138,34 @@ It understands incident IDs, user IDs (`U0214`), IPs, transaction IDs (`T002428`
 ("Moscow"), severities and "how many / summarize" questions. Unknown IDs get "No incident in the current data
 involves …". Try it: `python3 backend/ml/copilot.py --demo`.
 
+`welcome()` returns the opening message (same shape as `answer`, built from the data, instant, no Ollama) to
+replace the mock `ANSWERS.default`: `GET /copilot/welcome`.
+
 Suggested frontend chips (replace the mock ones in `AICopilotPage.tsx`):
 "Summarize the critical incidents", "What caused INC-2026-0081?", "Generate a remediation plan for the account
 takeovers", "How many incidents are there by type?", "What happened to user U0063?", "Explain the credential
 stuffing from Moscow".
+
+## 3b. Frontend page by page
+
+| Page / element (frontend/src) | Replace the mock with | Notes |
+|---|---|---|
+| Dashboard stat cards | `dashboard.json` -> `stats` (`active_incidents`, `critical`, `platform_risk_score`, `events_analysed` + `*_sub` texts) | "Avg Response Time" is analyst workflow data, not ML: keep or drop |
+| Dashboard risk map (`RISK_NODES`) | `dashboard.json` -> `risk_map` (`id, tag, score, alerts, risk`) | One node per API endpoint, from `api_logs.csv` |
+| Dashboard live events (`STREAM_POOL`) | `dashboard.json` -> `live_events` (`ts, node, msg, type`) | Newest first, `type` is `alert`/`warn` |
+| Dashboard recent incidents (`RECENT`) | `dashboard.json` -> `recent` (`id, sev, title, time, status`) | |
+| Incidents list + detail (`ALL`) | `GET /incidents` | Same field names |
+| Incidents "Threat Actor" (hard-coded) | `threat_actor` | |
+| Incidents "AI Analysis" paragraph | `reports.json` `summary` if present, else `ai_summary` | Model label: "llama3.2:3b + Isolation Forest/SHAP" instead of "finbert-vantix-v2.1" |
+| Incidents timeline (`TIMELINE`) | `timeline` | Includes `Rule Engine` rows |
+| Incidents "Generate Report" button | `GET /reports/{id}` (or `summarize(inc)` on demand for medium/low) | |
+| Copilot chat | `POST /copilot` -> `answer` (markdown in the page's `renderText` format) | |
+| Copilot opening message (`ANSWERS.default`) | `GET /copilot/welcome` -> `welcome()` | |
+| Copilot side panel "Model" | `llama3.2:3b (Ollama)` | "Method: Rule + ML hybrid" is now true |
+| Reports page (PCI-DSS / SOX / GDPR cards) | not ML output | Our reports are incident reports (`reports.json`), not compliance reports: list them in "All Reports" (one card per report: `id`, `title`, `sev`, `source`) or keep the compliance page as a static mock |
+
+`status` is always `OPEN` from the AI side; the buttons (Contain / Escalate / Resolve) and status filters are
+backend state.
 
 ## 4. Things to know
 
@@ -190,5 +218,6 @@ Labelled review sheets are in `docs/`. The answer key arrived after sections A-C
 | `incidents.py` | Group into incidents, classify, noise filter |
 | `summarize.py` | Verified LLM incident reports |
 | `copilot.py` | Verified LLM chat answers |
+| `frontend_data.py` | `dashboard.json` for the Dashboard page |
 | `evaluate.py`, `inject_test.py`, `review_sheet.py` | Evaluation |
 | `requirements.txt` | Python packages |
