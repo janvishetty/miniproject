@@ -496,20 +496,24 @@ def premise_notes(question, sel):
                          f"{o['time']} from {o['ip']} ({o['location']}).")
         if OWNER_Q.search(question):
             usual_ips = {d["ip"] for d in i.get("ip_details", []) if d["usual_for_user"]}
-            for t in sq.get("transfers", [])[:3]:
+            groups = {}                     # transfers with the same origin -> one sentence
+            for t in sq.get("transfers", [])[:5]:
                 if "usual_ip" not in t:      # older incidents.json: judge by the incident's IPs and attack type
                     t = dict(t, usual_ip=bool(usual_ips) and i["vector"] == "Transaction Anomaly",
                              registered_device=i["vector"] == "Transaction Anomaly")
-                if t["usual_ip"] and t["registered_device"]:
-                    notes.append(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']}) came from the customer's usual IP and "
-                                 f"registered device, so it was most likely made by the customer - or by someone who "
-                                 f"tricked them into paying. Confirm with the customer before acting.")
+                groups.setdefault((t["usual_ip"], t["registered_device"]), []).append(t)
+            for (ip_ok, dev_ok), ts in groups.items():
+                what = ", ".join(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']})" for t in ts)
+                verb = "came" if len(ts) == 1 else "all came"
+                if ip_ok and dev_ok:
+                    notes.append(f"{what} {verb} from the customer's usual IP and registered device, so "
+                                 f"{'it was' if len(ts) == 1 else 'they were'} most likely made by the customer - or by "
+                                 f"someone who tricked them into paying. Confirm with the customer before acting.")
                 else:
-                    notes.append(f"{t['id']} (₹{t['amount']:,.0f} to {t['merchant']}) did NOT come from the customer's "
-                                 f"usual setup ({'new IP' if not t['usual_ip'] else ''}"
-                                 f"{' and ' if not t['usual_ip'] and not t['registered_device'] else ''}"
-                                 f"{'unregistered device' if not t['registered_device'] else ''}), so it was most likely "
-                                 f"not the customer.")
+                    how = " and ".join(x for x, ok in (("a new IP", ip_ok), ("an unregistered device", dev_ok)) if not ok)
+                    notes.append(f"{what} {'did' if len(ts) == 1 else 'all did'} NOT come from the customer's usual "
+                                 f"setup ({how}), so {'it was' if len(ts) == 1 else 'they were'} most likely not made "
+                                 f"by the customer.")
         if MONEY_Q.search(question) and not sq.get("transfers") and i["vector"] != "Transaction Anomaly":
             notes.append(f"No money moved in {i['id']}: it was a login attack with no transfers.")
     return notes
