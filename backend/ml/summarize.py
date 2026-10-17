@@ -348,6 +348,11 @@ Write it again and fix them. Name the affected user ID. If there were transfers,
 only use merchant names from FACTS. If FACTS say NO transfers, do not mention transfers, transactions,
 merchants, funds or amounts at all. If FACTS say NO successful logins, say all attempts failed - do not claim
 anyone logged in. Only use IDs exactly as written in FACTS."""
+RETRY_LOGIN = """
+Your previous answer had these problems: {problems}
+Write it again and fix them. This was a login attack only: describe the failed logins, the IP, the targeted
+account(s) and whether anyone got in, exactly as in FACTS, and end with "No money moved." Only use IDs, counts
+and times exactly as written in FACTS."""
 
 
 def generate(prompt, temperature):
@@ -370,7 +375,8 @@ def summarize(inc, dry_run=False, max_attempts=3):
     t0 = time.time()
     best, attempts = None, []
     for attempt in range(1, max_attempts + 1):
-        p = prompt if attempt == 1 else prompt + RETRY_NOTE.format(problems="; ".join(best["grounding"]["unverified"]))
+        note = RETRY_NOTE if inc.get("sequence", {}).get("transfers") else RETRY_LOGIN
+        p = prompt if attempt == 1 else prompt + note.format(problems="; ".join(best["grounding"]["unverified"]))
         summary, steps = generate(p, temperature=0.1 if attempt == 1 else 0.4)
         g = grounding_check(summary + " " + " ".join(steps), facts, inc, summary)
         attempts.append({"attempt": attempt, "grounded": g["grounded"], "problems": g["unverified"]})
