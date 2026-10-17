@@ -13,6 +13,7 @@ Run (from repo root, with `ollama serve` running):
   python backend/ml/summarize.py --all        # all 254 incidents
   python backend/ml/summarize.py --sev medium # only medium
   python backend/ml/summarize.py --force      # regenerate even if cached
+  python backend/ml/summarize.py --retry-templates   # retry only the reports that fell back to the template
   python backend/ml/summarize.py --id INC-2026-0080
   python backend/ml/summarize.py --dry-run    # print the prompt, don't call Ollama
 """
@@ -148,13 +149,12 @@ def facts_block(inc):
         f"What: {w['what']}", f"When: {w['when']}", f"Where: {w['where']}",
         f"IP threat-intel level: {inc['ip_threat_level']}",
         "Why flagged (top model reasons): " + "; ".join(w["why_flagged"]),
-        "Detected by: " + {"ml": "ML model only", "rules": "rule engine only", "ml+rules": "ML model and rule engine"}
-        .get(inc.get("detected_by"), "ML model") + (" | Rules fired: " + "; ".join(
-            f"{r['rule']} ({r['name']})" for r in inc["rule_hits"]) if inc.get("rule_hits") else ""),
         "Attack sequence: " + sequence_line(inc),
         "Timeline (oldest first):",
     ]
-    lines += [f"  {t['time']} [{t['actor']}] {t['msg']}" for t in reversed(inc["timeline"])]
+    # Rule Engine rows stay out of the LLM facts: rule names like "Transfer far above the user's average" made the
+    # 3B model invent transfers on login-only incidents. Rules reach the report through code (`rule_hits` below).
+    lines += [f"  {t['time']} [{t['actor']}] {t['msg']}" for t in reversed(inc["timeline"]) if t["actor"] != "Rule Engine"]
     return "\n".join(lines)
 
 
@@ -360,6 +360,7 @@ def summarize(inc, dry_run=False, max_attempts=3):
         "id": inc["id"], "title": inc["title"], "sev": inc["sev"], "vector": inc["vector"],
         "confidence": inc["confidence"], "impact": inc["impact"],
         "five_ws": five_ws(inc), "mitre": MITRE.get(inc["vector"], []),
+        "detected_by": inc.get("detected_by", "ml"), "rule_hits": inc.get("rule_hits", []),   # from code, not the LLM
         "summary": best["summary"],
         "containment_actions": containment_actions(inc),   # from data
         "investigation_steps": best["steps"],              # from LLM, grounding-checked
@@ -378,6 +379,8 @@ def main():
     p.add_argument("--top", type=int, help="only the N highest-risk incidents")
     p.add_argument("--id", help="one incident, e.g. INC-2026-0080")
     p.add_argument("--force", action="store_true", help="regenerate reports that already exist")
+    p.add_argument("--retry-templates", action="store_true",
+                   help="regenerate only cached reports that fell back to the template")
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
     out = Path(a.out)
@@ -412,7 +415,8 @@ def main():
             if not g["grounded"] or r.get("title") != inc["title"]:
                 stale.append(inc["id"])
                 print(f"   re-check failed for cached {inc['id']}: {g['unverified'] or 'incident changed'} -> regenerating")
-    pending = [i for i in todo if a.force or i["id"] not in cache or i["id"] in stale]
+    pending = [i for i in todo if a.force or i["id"] not in cache or i["id"] in stale
+               or (a.retry_templates and cache[i["id"]].get("source") == "template")]
     print(f"{len(todo)} incidents selected | {len(todo) - len(pending)} cached & re-verified | {len(pending)} to generate")
 
     done = []
