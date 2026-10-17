@@ -452,6 +452,18 @@ def main():
     path = out / "reports.json"
     cache = {r["id"]: r for r in json.loads(path.read_text())} if path.exists() else {}
     cache = {k: v for k, v in cache.items() if "source" in v}            # drop reports from older script versions
+    # drop reports whose incident no longer exists or changed (IDs can be renumbered by incidents.py): the backend
+    # serves reports.json by ID, so a stale report would tell the wrong story for that ID
+    by_id = {i["id"]: i for i in incidents}
+    gone = [k for k, r in cache.items() if k not in by_id or r.get("title") != by_id[k]["title"]
+            or not grounding_check(r["summary"] + " " + " ".join(r["investigation_steps"]),
+                                   facts_block(by_id[k]), by_id[k], r["summary"])["grounded"]]
+    gone = [k for k in gone if k not in {i["id"] for i in todo}]       # selected ones are regenerated below
+    for k in gone:
+        del cache[k]
+    if gone:
+        print(f"   dropped {len(gone)} stale reports (incident renumbered or changed)")
+        path.write_text(json.dumps(list(cache.values()), indent=2, ensure_ascii=False))
     # re-verify cached reports against the CURRENT checks + incident data; regenerate any that no longer pass
     stale = []
     for inc in todo:
@@ -492,7 +504,7 @@ def main():
     from collections import Counter
     src = Counter(r["source"] for r in sel)
     final = sum(r["grounding"]["grounded"] for r in sel)
-    avg = sum(r["generation_seconds"] for r in sel) / n
+    avg = sum(r.get("generation_seconds", 0) for r in sel) / n
     print(f"\nSaved -> {path}  ({len(cache)} reports total)")
     print(f"FINAL: {final}/{n} reports verified ({100 * final / n:.0f}%) | avg {avg:.1f}s per report")
     print(f"  LLM passed first try: {src['llm']}/{n} | after self-correction: {src['llm'] + src['llm_corrected']}/{n}"
