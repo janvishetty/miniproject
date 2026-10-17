@@ -87,7 +87,8 @@ def readability_problems(text):
         return ["empty answer"]
     if t[:1] in "{[" or "```" in t or re.search(r'"\w+"\s*:\s*[\[{"\d]', t):
         p.append("not a readable answer (JSON/code instead of prose)")
-    if re.search(r"\[(?:Auth Service|Payments API|Threat Intel|AI Engine)\]|^\s*(?:Who|What|When|Where):", t, re.M):
+    if re.search(r"\[(?:Auth Service|Payments API|Threat Intel|AI Engine)\]|^\s*(?:Who|What|When|Where):"
+                 r"|^\s*\**Incident:\s*INC-|\|\s*(?:Type|Severity|Model confidence|Impact):", t, re.M):
         p.append("copied raw fact lines instead of answering")
     if re.search(r"(?<![\d.])\d{1,3}\.\d{1,3}\.\d{1,3}\.?\s*$", t):   # 3 octets only, not the tail of a full IP
         p.append("answer is cut off mid-sentence (incomplete IP)")

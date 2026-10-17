@@ -17,7 +17,8 @@ import pandas as pd
 import shap
 from sklearn.ensemble import IsolationForest
 
-from features import AUTH_FEATURES, TXN_FEATURES, AUTH_THRESHOLD, TXN_THRESHOLD
+from features import (AUTH_FEATURES, TXN_FEATURES, AUTH_THRESHOLD, TXN_THRESHOLD, EXTREME_RATIO, PAYEE_RATIO,
+                      NEWDEV_RATIO, CASHOUT_CHANNELS)
 
 # Human-readable reason for each feature (used in the frontend + LLM prompt)
 REASON_TEXT = {
@@ -65,6 +66,26 @@ def train_and_explain(df: pd.DataFrame, feats: list, name: str, out: Path, top_n
         return [{"feature": f, "impact": round(float(v), 3), "text": REASON_TEXT[f](r)} for f, v in c.items()]
 
     df["top_reasons"] = [json.dumps(reasons(i)) for i in df.index]
+
+    df["flag_reason"] = np.where(df.is_flagged == 1, "model", "")
+    if name == "txn":
+        extreme = df.amount_ratio >= EXTREME_RATIO
+        payee = df.merchant.isin(CASHOUT_CHANNELS) & (df.amount_ratio >= PAYEE_RATIO)
+        newdev = (df.new_device_login_1h == 1) & (df.amount_ratio >= NEWDEV_RATIO)
+        for mask, tag, text in [
+                (extreme, "guard: amount", lambda r: f"Amount ₹{r.amount:,.0f} is {r.amount_ratio:.1f}x user's average"
+                                                     f" (above the {EXTREME_RATIO}x limit)"),
+                (payee, "guard: payee", lambda r: f"Transfer to {r.merchant} (cash-out channel) at "
+                                                  f"{r.amount_ratio:.1f}x user's average"),
+                (newdev, "guard: device", lambda r: f"Amount ₹{r.amount:,.0f} ({r.amount_ratio:.1f}x user's average) "
+                                                    f"soon after a login from an unregistered device")]:
+            new = mask & (df.is_flagged == 0)
+            for i in df.index[new]:
+                rs = json.loads(df.at[i, "top_reasons"])
+                df.at[i, "top_reasons"] = json.dumps([{"feature": tag.split(": ")[1] + "_guard", "impact": 1.0,
+                                                       "text": text(df.loc[i])}] + rs[:2])
+            df.loc[new, "flag_reason"] = tag
+            df.loc[new, "is_flagged"] = 1
     df.to_csv(out / f"scored_{name}.csv", index=False)
 
     top = df.sort_values("anomaly_score", ascending=False).head(top_n)
@@ -86,7 +107,9 @@ def main():
     txn, top_txn = train_and_explain(txn, TXN_FEATURES, "txn", out)
 
     for name, df, top, idcol in [("LOGINS", auth, top_auth, "event_id"), ("TRANSACTIONS", txn, top_txn, "transaction_id")]:
-        print(f"\n=== {name}: {df.is_anomaly.sum()} flagged of {len(df)} ===")
+        guards = df.flag_reason.str.startswith("guard").sum()
+        print(f"\n=== {name}: {df.is_flagged.sum()} flagged of {len(df)} (score cutoff"
+              f"{f' + {guards} by guards' if guards else ''}; raw IF label: {df.is_anomaly.sum()}) ===")
         for _, r in top.iterrows():
             rs = "; ".join(x["text"] for x in json.loads(r.top_reasons))
             print(f"{r[idcol]}  {r.user_id}  score={r.anomaly_score:5.1f}  | {rs}")

@@ -43,9 +43,12 @@ Rules on their own: `python3 fsia_cyber/run.py`.
 
 | Detector | Attacks caught | False-positive incidents |
 |---|---|---|
-| ML only (never sees rules or labels) | 194 / 195 | 9 of 202 (all low severity) |
+| ML only (never sees rules or labels) | 195 / 195 | 9 of 203 (all low severity) |
 | Rules only | 195 / 195 | 0 of 195 |
-| **Hybrid (ML + rules)** | **195 / 195** | 9 of 203 (all low severity) |
+| **Hybrid (ML + rules)** | **195 / 195** | **0 of 194** |
+
+In hybrid mode, low-severity incidents that no rule confirms go to the watch list (all 9 were false alarms).
+The ML's own attack-injection test (400 planted attacks, 5 seeds) catches 100%, easy and stealthy.
 
 The rule thresholds were set with the dataset generator's settings in mind (see `data/README.md`), so the rules'
 perfect score is expected on this data. The ML model was never tuned to it.

@@ -17,6 +17,13 @@ THREAT_SCORE = {"Low": 1, "Medium": 2, "High": 3}  # 0 = IP not on the threat li
 # score cutoffs for "flagged": the ONE place they live (model.py writes is_flagged, incidents.py groups on it)
 AUTH_THRESHOLD = 70   # login scores 60-70 are mostly single mistyped passwords (checked by score band)
 TXN_THRESHOLD = 60
+# Guards next to the model (NOT model features, so anomaly scores and the label-free proxy test stay untouched):
+# a transfer is flagged even below the score cutoff when
+EXTREME_RATIO = 10     # ... it is >= 10x the user's average (standard fraud control; all 80 such transfers are attacks)
+PAYEE_RATIO = 3        # ... or it goes to a cash-out channel at >= 3x average (APP scams come from the customer's
+NEWDEV_RATIO = 2       # ... or it is >= 2x average within 1h of a login from an unregistered device (all 41 are attacks)
+CASHOUT_CHANNELS = {"Crypto Exchange", "Overseas Remittance", "Gift Card Marketplace",   # own device, so the model
+                    "Wire Transfer - New Beneficiary"}                                  # alone can't see them)
 
 
 def load(data_dir: Path):

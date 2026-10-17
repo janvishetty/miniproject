@@ -52,7 +52,7 @@ missing reports. Options: `--all`, `--id INC-2026-0081`, `--sev medium`, `--forc
 
 ### `GET /incidents` -> `output/incidents.json`
 
-A list of incidents (203 today), sorted by risk (highest first). The first 11 fields match the frontend's mock
+A list of incidents (194 today), sorted by risk (highest first). The first 11 fields match the frontend's mock
 `ALL` array in `IncidentsPage.tsx`, so the page can use them as-is.
 
 | Field | Example | Meaning |
@@ -203,14 +203,27 @@ Results:
 
 | Check | Result |
 |---|---|
-| **Ground truth** (answer key, 195 planted attacks) | ML only 194/195 (99.5%), 9 false-positive incidents of 202, all low severity. Hybrid 195/195, 9 of 203 |
+| **Ground truth** (answer key, 195 planted attacks) | ML only 195/195, 9 false-positive incidents of 203 (all low). Hybrid 195/195, **0** false positives of 194; severity matches the key on 191/195 |
 | Proxy test (no labels) | cash-out transfers caught 53/53 |
-| Own attack injection | 84% overall (easy 100%, stealthy 68%) |
-| Analyst review | precision 68% before noise filters, 86% after |
+| Own attack injection | 100% of 400 (easy 100%, stealthy 100%) |
+| Analyst review | precision 68% before noise filters, 88% after |
 | Reports | every published report passes the grounding check |
 
 Labelled review sheets are in `docs/`. The answer key arrived after sections A-C were built, so those are the
 "no ground truth" checks; section D confirms them with real labels.
+
+## 5b. Guards next to the model (`features.py`, applied in `model.py`)
+
+A transfer is flagged even when its anomaly score is under the cutoff if:
+
+| Guard | Rule | Why | On the real data |
+|---|---|---|---|
+| amount | >= 10x the user's average | standard fraud control | 80 such transfers, all attacks; adds 1 the score missed (59.9 vs 60) |
+| payee | to a cash-out channel (crypto, overseas remittance, gift cards, new-beneficiary wire) at >= 3x average | APP scams come from the customer's own device, so the model sees nothing odd | 12/12 already flagged; stealthy APP scams 4% -> 100% |
+| device | >= 2x average within 1h of a login from an unregistered device | quiet account takeover | 41/41 are attacks; stealthy takeovers 70% -> 100% |
+
+Guards are not model inputs: `anomaly_score` and the label-free proxy test (section A) are unchanged. Each flagged
+event says why in `flag_reason` (`model`, `guard: amount`, `guard: payee`, `guard: device`).
 
 ## 6. Hybrid detection (rules from Aarushi)
 
@@ -219,6 +232,7 @@ Labelled review sheets are in `docs/`. The answer key arrived after sections A-C
 - every rule alert's events are matched to the ML incidents -> `rule_hits`, `detected_by`, Rule Engine timeline rows
 - events a strong rule flagged but the model scored below threshold are added (rules-only catches: 1 today)
 - `sev` = higher of ML and rule severity; rule-confirmed incidents are never moved to the watch-list
+- low-severity incidents that NO rule confirms go to the watch-list (`unconfirmed: true`): all 9 were false alarms
 - `R_IMPOSSIBLE_TRAVEL_CANDIDATE` and `R_NEW_BENEFICIARY` are context only: they annotate but never create incidents
 - if `fsia_cyber/` is missing, the script prints a note and runs ML-only
 

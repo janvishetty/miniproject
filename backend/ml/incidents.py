@@ -102,7 +102,8 @@ def load(out: Path, hits=None):
     strong = {e for e, hs in (hits or {}).items() if any(h["rule"] not in WEAK_RULES for h in hs)}
     a = pd.read_csv(out / "scored_auth.csv", parse_dates=["timestamp"])
     t = pd.read_csv(out / "scored_txn.csv", parse_dates=["timestamp"])
-    a["by_ml"], t["by_ml"] = a.anomaly_score >= AUTH_THRESHOLD, t.anomaly_score >= TXN_THRESHOLD
+    for df, th in ((a, AUTH_THRESHOLD), (t, TXN_THRESHOLD)):     # is_flagged = score cutoff + model.py guards
+        df["by_ml"] = df.is_flagged.astype(bool) if "is_flagged" in df else df.anomaly_score >= th
     a = a[a.by_ml | a.event_id.isin(strong)].assign(kind="login", eid=lambda d: d.event_id, amount=0.0, merchant="")
     t = t[t.by_ml | t.transaction_id.isin(strong)].assign(kind="txn", eid=lambda d: d.transaction_id)
     cols = ["eid", "kind", "timestamp", "user_id", "ip_address", "device_id", "location", "status",
@@ -357,6 +358,9 @@ def main():
             v = classify(part)
             inc = build_incident(part, v)
             inc["_noise"] = None if inc["rule_severity"] else noise_reason(part, v)   # rule-confirmed: keep
+            # hybrid triage: low severity and no rule agrees -> watch list (all 9 such were false alarms vs the key)
+            if hits is not None and not inc["_noise"] and inc["detected_by"] == "ml" and inc["sev"] == "low":
+                inc["_noise"] = "low severity and not confirmed by any rule (ML-only)"
             incidents.append(inc)
 
     incidents.sort(key=lambda x: x["start"])
@@ -369,7 +373,10 @@ def main():
 
     # IDs are assigned BEFORE filtering, so kept incidents keep the same ID with or without the filter
     watch = [{"id": x["id"], "vector": x["vector"], "reason": x["_noise"], "users": x["users"], "ips": x["ips"],
-              "start": x["start"], "event_ids": x["event_ids"]} for x in incidents if x.get("_noise")]
+              "start": x["start"], "event_ids": x["event_ids"], "sev": x["sev"],
+              "ml_event_ids": x.get("ml_event_ids", x["event_ids"]),
+              "unconfirmed": x["_noise"].startswith("low severity and not confirmed")}
+             for x in incidents if x.get("_noise")]
     incidents = [{k: v for k, v in x.items() if k != "_noise"} for x in incidents if not x.get("_noise")]
     # pipeline_run_id: a fingerprint of the exact incident set (IDs + their events). Same data + code -> same id,
     # so the backend can tell whether a stored INC-... still means the same incident after a rerun.

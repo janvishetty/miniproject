@@ -29,7 +29,7 @@ import pandas as pd
 
 from features import TXN_FEATURES, TXN_THRESHOLD   # TXN_THRESHOLD = the cutoff incidents.py uses
 
-CASHOUT = {"Crypto Exchange", "Overseas Remittance", "Gift Card Marketplace", "Wire Transfer - New Beneficiary"}
+from features import CASHOUT_CHANNELS as CASHOUT   # section A scores anomaly_score only, so the guards don't touch it
 THRESHOLDS = [50, 60, 70, 80, 90]
 
 
@@ -77,7 +77,7 @@ GT_VECTOR = {"brute_force": {"Brute Force"}, "account_takeover": {"Account Takeo
              "suspicious_login": {"Suspicious Login"}, "suspicious_ip": {"Suspicious Login"}}
 
 
-def ground_truth(incidents, data: Path):
+def ground_truth(incidents, data: Path, watch=()):
     """Score incident lists against the answer key. Scenario IDs repeat across types, so the key is (id, type)."""
     ge = pd.read_csv(data / "ground_truth_events.csv")
     ge = ge[ge.table != "api"]                     # api_logs are not a detection input
@@ -120,9 +120,10 @@ def ground_truth(incidents, data: Path):
         return dict(c)
 
     has_rules = any("detected_by" in i for i in incidents)
-    ml = [i for i in incidents if i.get("ml_event_ids", i["event_ids"])]
+    # ML only = what the model reported BEFORE the hybrid triage (unconfirmed low incidents went to the watch list)
+    ml = [i for i in incidents if i.get("ml_event_ids", i["event_ids"])] + [w for w in watch if w.get("unconfirmed")]
     res = [score("ML only", ml, "ml_event_ids" if has_rules else "event_ids")]
-    res[0]["severity_vs_key"] = severity(incidents, "ml_severity" if has_rules else "sev")
+    res[0]["severity_vs_key"] = severity(ml, "ml_severity" if has_rules else "sev")
     if has_rules:
         res.append(score("Hybrid (ML + rules)", incidents, "event_ids"))
         res[1]["severity_vs_key"] = severity(incidents, "sev")
@@ -222,7 +223,8 @@ def main():
     data = Path(__file__).resolve().parents[2] / "data"
     print("\nD. GROUND TRUTH (answer key data/ground_truth_*.csv - used only here)")
     if (data / "ground_truth_scenarios.csv").exists():
-        D = ground_truth(incidents, data)
+        D = ground_truth(incidents, data, json.loads((out / "watchlist.json").read_text())
+                         if (out / "watchlist.json").exists() else [])
         for r in D:
             print(f"   {r['name']:20} caught {r['caught']}/{r['scenarios']} scenarios ({r['recall']:.1%})  | "
                   f"{r['false_positive_incidents']} false-positive incidents of {r['incidents']} "

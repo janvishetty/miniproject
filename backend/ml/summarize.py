@@ -178,6 +178,8 @@ def facts_block(inc):
         f"Incident: {inc['id']} | Type: {inc['vector']} | Severity: {inc['sev']} | "
         f"Model confidence: {inc['confidence']}/100 | Impact: {inc['impact']}/100",
         f"Who: {w['who']}", f"Accounts involved: {len(inc['users'])} | Source IPs: {len(inc['ips'])}",
+        # every account by ID: with only "(+3 more)" the LLM invented the missing IDs and fell back to the template
+        *([f"All accounts: {', '.join(inc['users'][:20])}"] if len(inc["users"]) > 5 else []),
         f"What: {w['what']}", f"When: {w['when']}", f"Where: {w['where']}",
         f"IP threat-intel level: {inc['ip_threat_level']}",
         "Why flagged (top model reasons): " + "; ".join(w["why_flagged"]),
