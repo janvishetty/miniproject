@@ -403,7 +403,25 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("question", nargs="?")
     p.add_argument("--demo", action="store_true", help="run the suggestion chips")
+    p.add_argument("--chat", action="store_true", help="type questions one after another (empty line or 'quit' ends)")
     a = p.parse_args()
+    if a.chat:
+        print(welcome()["answer"].replace("**", ""), "\n")
+        while True:
+            try:
+                q = input("You: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+            if not q or q.lower() in ("quit", "exit", "q"):
+                break
+            print("   thinking...", end="\r", flush=True)
+            try:
+                r = answer(q)
+            except urllib.error.URLError as e:
+                raise SystemExit(f"Can't reach Ollama at {S.OLLAMA_URL} ({e.reason}). Is `ollama serve` running?")
+            print(f"Copilot ({r['source']}, {r['seconds']}s, verified: {r['grounding']['grounded']}):")
+            print("   " + r["answer"].replace("**", "").replace("\n", "\n   ") + "\n")
+        return
     qs = DEMO if a.demo or not a.question else [a.question]
     results = []
     for q in qs:
