@@ -41,19 +41,26 @@ class FakeEmailExists(Exception):
 class _Result:
     def __init__(self, data):
         self.data = data
+        self.count = None
 
 
 class _Query:
     def __init__(self, store, name):
         self.store, self.name = store, name
         self.op, self.payload, self.filters, self.n = "select", None, [], None
+        self.on_conflict, self.count_mode = None, None
 
-    def select(self, *_a, **_k):
+    def select(self, *_a, count=None, **_k):
         self.op = "select"
+        self.count_mode = count
         return self
 
     def insert(self, row):
         self.op, self.payload = "insert", row
+        return self
+
+    def upsert(self, rows, on_conflict=None):
+        self.op, self.payload, self.on_conflict = "upsert", rows, on_conflict
         return self
 
     def eq(self, col, val):
@@ -69,6 +76,11 @@ class _Query:
             raise RuntimeError("simulated database outage")
         if self.op == "insert" and self.store.fail_inserts.get(self.name):
             raise RuntimeError("simulated insert failure")
+        if self.op == "upsert":
+            remaining = self.store.fail_upserts_times.get(self.name, 0)
+            if remaining > 0:
+                self.store.fail_upserts_times[self.name] = remaining - 1
+                raise RuntimeError("simulated transient upsert failure")
         rows = self.store.tables.setdefault(self.name, [])
         if self.op == "insert":
             if self.name == "profiles":
@@ -77,8 +89,25 @@ class _Query:
                         raise FakeDuplicate()
             rows.append(dict(self.payload))
             return _Result([self.payload])
+        if self.op == "upsert":
+            incoming = self.payload if isinstance(self.payload, list) else [self.payload]
+            key_fields = (self.on_conflict or "").split(",")
+            written = []
+            for new_row in incoming:
+                key = tuple(new_row.get(k) for k in key_fields)
+                for i, existing in enumerate(rows):
+                    if tuple(existing.get(k) for k in key_fields) == key:
+                        rows[i] = dict(new_row)
+                        break
+                else:
+                    rows.append(dict(new_row))
+                written.append(new_row)
+            return _Result(written)
         found = [r for r in rows if all(r.get(c) == v for c, v in self.filters)]
-        return _Result(found[: self.n] if self.n else found)
+        result = _Result(found[: self.n] if self.n else found)
+        if self.count_mode:
+            result.count = len(found)
+        return result
 
 
 class FakeSupabase:
@@ -88,6 +117,7 @@ class FakeSupabase:
         self.tables: dict[str, list[dict]] = {}
         self.fail_tables: dict[str, bool] = {}     # every query on the table fails
         self.fail_inserts: dict[str, bool] = {}    # only inserts on the table fail
+        self.fail_upserts_times: dict[str, int] = {}  # upsert on the table fails N times, then succeeds
         self.users: dict[str, dict] = {}          # id -> {email, password}
         self.auth = SimpleNamespace(
             admin=SimpleNamespace(

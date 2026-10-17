@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.errors import (http_exception_handler, rate_limit_handler,
                         unhandled_exception_handler, validation_exception_handler)
 from app.rate_limit import limiter
-from app.routers import admin, auth, health
+from app.routers import admin, auth, health, ingest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 access_log = logging.getLogger("fsia.access")
@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(ingest.router)
     return app
 
 

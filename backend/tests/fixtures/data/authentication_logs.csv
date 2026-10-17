@@ -1,0 +1,5 @@
+﻿event_id,timestamp,user_id,ip_address,device_id,event_type,status,location,mfa_status
+E000001,2026-09-01 00:56:20,U0568,103.21.230.29,D00739,login,success,"Mumbai, IN",not_required
+E000002,BADTIMESTAMP,U0001,1.2.3.4,D00001,login,success,Pune,n/a
+E000003,2026-09-01 01:00:00,,1.2.3.5,,logout,success,,n/a
+E000004,2026-09-01 01:05:00,U0999,1.2.3.6,D00999,login,success,"Delhi, IN",
