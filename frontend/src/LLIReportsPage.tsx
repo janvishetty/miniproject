@@ -42,8 +42,8 @@ export default function LLIReportsPage({ t, showToast }: Props) {
 
       {/* Page title + sub-nav */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: t.text }}>Compliance Reports</h1>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: t.textSub }}>View, download, and generate regulatory compliance reports for your FinTech platform.</p>
+        <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: t.text }}>Incident Reports</h1>
+        <p style={{ margin: "0 0 16px", fontSize: 14, color: t.textSub }}>AI-generated, fact-checked investigation reports for critical and high incidents.</p>
         <div style={{ display: "flex", gap: 4, background: t.bg, borderRadius: t.radiusSm, padding: 4, width: "fit-content", border: `1px solid ${t.border}` }}>
           {(["reports","compliance","generate"] as const).map(tb => (
             <button key={tb} onClick={() => setTab(tb)} style={{ padding: "6px 18px", borderRadius: 6, border: "none", background: tab === tb ? t.card : "transparent", color: tab === tb ? t.text : t.textSub, fontWeight: 600, fontSize: 13, cursor: "pointer", boxShadow: tab === tb ? t.shadow : "none", transition: "all 0.15s" }}>
