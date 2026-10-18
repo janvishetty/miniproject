@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import * as api from "./api";
 import type { Theme } from "./theme";
 import { Card, StatCard, SevBadge, ProgressBar, SectionHead, Btn, Icons } from "./ui";
+import { Skeleton, SeverityDonut, HBars } from "./charts";
 
 function nodeColor(risk: string, t: Theme) {
   if (risk === "critical") return t.red;
@@ -39,7 +40,17 @@ export default function DashboardPage({ t, onNavigate }: Props) {
               <span style={{ fontSize: 13, color: t.red }}>{error}</span>
               <Btn t={t} variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>Retry</Btn>
             </div>
-          : <span style={{ fontSize: 13, color: t.textMuted }}>Loading dashboard...</span>}
+          : <div aria-label="Loading dashboard">
+              <Skeleton t={t} w={260} h={24} style={{ marginBottom: 10 }}/>
+              <Skeleton t={t} w={420} h={14} style={{ marginBottom: 24 }}/>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+                {[0, 1, 2, 3].map(i => <Skeleton key={i} t={t} h={118} r={12}/>)}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16 }}>
+                <Skeleton t={t} h={300} r={12}/>
+                <Skeleton t={t} h={300} r={12}/>
+              </div>
+            </div>}
       </div>
     );
   }
@@ -67,31 +78,45 @@ export default function DashboardPage({ t, onNavigate }: Props) {
       {/* Middle row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, marginBottom: 24 }}>
 
-        {/* Risk heatmap */}
-        <Card t={t} style={{ padding: "20px 24px" }}>
-          <SectionHead title={data.risk_map_title ?? "Risk Map"} sub="Each node shows its current risk score — red means high priority" t={t}/>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-            {riskNodes.length === 0 && <div style={{ fontSize: 12, color: t.textMuted }}>No risk map data in this run.</div>}
-            {riskNodes.map(node => {
-              const color = nodeColor(node.risk, t);
-              return (
-                <div key={node.id} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = color + "0d"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.bg; }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, background: t.card, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>{node.tag}</span>
-                    <span style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "'DM Mono',monospace" }}>{node.score}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+          {/* Risk heatmap */}
+          <Card t={t} style={{ padding: "20px 24px" }}>
+            <SectionHead title={data.risk_map_title ?? "Risk Map"} sub="Each node shows its current risk score — red means high priority" t={t}/>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+              {riskNodes.length === 0 && <div style={{ fontSize: 12, color: t.textMuted }}>No risk map data in this run.</div>}
+              {riskNodes.map(node => {
+                const color = nodeColor(node.risk, t);
+                return (
+                  <div key={node.id} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = color + "0d"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.bg; }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, background: t.card, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>{node.tag}</span>
+                      <span style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "'DM Mono',monospace" }}>{node.score}</span>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.3 }}>{node.id}</div>
+                    <ProgressBar value={node.score} color={color} t={t}/>
+                    {node.alerts > 0
+                      ? <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 5 }}>⚠ {node.alerts} {node.alerts === 1 ? "alert" : "alerts"}</div>
+                      : <div style={{ fontSize: 11, color: t.green, marginTop: 5 }}>✓ Clear</div>}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.3 }}>{node.id}</div>
-                  <ProgressBar value={node.score} color={color} t={t}/>
-                  {node.alerts > 0
-                    ? <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 5 }}>⚠ {node.alerts} {node.alerts === 1 ? "alert" : "alerts"}</div>
-                    : <div style={{ fontSize: 11, color: t.green, marginTop: 5 }}>✓ Clear</div>}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Severity and attack-type breakdown */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <Card t={t} style={{ padding: "20px 24px" }}>
+              <SectionHead title="By Severity" sub="Open incidents" t={t}/>
+              <SeverityDonut counts={data.by_severity ?? {}} t={t}/>
+            </Card>
+            <Card t={t} style={{ padding: "20px 24px" }}>
+              <SectionHead title="By Attack Type" sub="Open incidents" t={t}/>
+              <HBars rows={Object.entries(data.by_type ?? {}).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} color={t.blue} t={t} empty="No open incidents in this run."/>
+            </Card>
           </div>
-        </Card>
+        </div>
 
         {/* Live event feed */}
         <Card t={t} style={{ padding: "20px 20px", display: "flex", flexDirection: "column", maxHeight: 560 }}>

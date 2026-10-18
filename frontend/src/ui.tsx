@@ -20,6 +20,15 @@ export function StatusBadge({ status, t }: { status: string; t: Theme }) {
   );
 }
 
+// ─── Report source label ─────────────────────────────────────────────────────
+export function sourceLabel(source: string | null | undefined) {
+  if (source === "llm") return "LLM";
+  if (source === "llm_corrected") return "LLM · self-corrected";
+  if (source === "template") return "Template";
+  if (source === "facts") return "From data (no LLM)";
+  return source ?? "—";
+}
+
 // ─── Button ──────────────────────────────────────────────────────────────────
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
 interface BtnProps {
@@ -34,7 +43,7 @@ interface BtnProps {
 }
 export function Btn({ children, onClick, variant = "secondary", t, disabled, size = "md", fullWidth, icon }: BtnProps) {
   const styles: Record<BtnVariant, { bg: string; color: string; border: string; hoverBg: string }> = {
-    primary:   { bg: t.blue,    color: t.textInv,   border: t.blue,         hoverBg: "#1d4ed8" },
+    primary:   { bg: t.blue,    color: t.textInv,   border: t.blue,         hoverBg: t.blue + "cc" },
     secondary: { bg: t.card,    color: t.text,       border: t.border,       hoverBg: t.cardHover },
     ghost:     { bg: "transparent", color: t.textSub, border: "transparent", hoverBg: t.badge },
     danger:    { bg: t.redDim,  color: t.red,        border: t.redBorder,    hoverBg: t.red + "22" },
@@ -59,13 +68,14 @@ export function Btn({ children, onClick, variant = "secondary", t, disabled, siz
 }
 
 // ─── Card ────────────────────────────────────────────────────────────────────
-export function Card({ children, t, onClick, style }: { children: React.ReactNode; t: Theme; onClick?: () => void; style?: React.CSSProperties }) {
+export function Card({ children, t, onClick, hoverable, style }: { children: React.ReactNode; t: Theme; onClick?: () => void; hoverable?: boolean; style?: React.CSSProperties }) {
+  const lift = !!onClick || !!hoverable;
   return (
     <div
       onClick={onClick}
       style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radius, boxShadow: t.shadow, cursor: onClick ? "pointer" : undefined, transition: "box-shadow 0.2s, transform 0.2s", ...style }}
-      onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = t.shadowMd; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-      onMouseLeave={e => { if (onClick) { e.currentTarget.style.boxShadow = t.shadow; e.currentTarget.style.transform = "none"; } }}
+      onMouseEnter={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadowMd; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+      onMouseLeave={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadow; e.currentTarget.style.transform = "none"; } }}
     >
       {children}
     </div>
@@ -112,12 +122,12 @@ export function ProgressBar({ value, max = 100, color, t }: { value: number; max
 }
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
-export function EmptyState({ icon, title, sub }: { icon: string; title: string; sub: string }) {
+export function EmptyState({ icon, title, sub, t }: { icon: React.ReactNode; title: string; sub: string; t: Theme }) {
   return (
-    <div style={{ textAlign: "center", padding: "48px 24px" }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: "#64748b" }}>{sub}</div>
+    <div style={{ textAlign: "center", padding: "40px 24px" }}>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.badge, color: t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>{icon}</div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: t.text, marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 13, color: t.textSub }}>{sub}</div>
     </div>
   );
 }
