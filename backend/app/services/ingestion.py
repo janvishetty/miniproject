@@ -60,12 +60,12 @@ def _files_for_source(source: str) -> list[str]:
     return [_SOURCE_TO_FILE[source]]
 
 
-def _upsert_with_retry(table: str, rows: list[dict], on_conflict: str) -> None:
+def _upsert_with_retry(table: str, rows: list[dict], on_conflict: str) -> int:
     last_exc: Exception | None = None
     for attempt in range(RETRY_ATTEMPTS):
         try:
-            database.get_admin_client().table(table).upsert(rows, on_conflict=on_conflict).execute()
-            return
+            res = database.get_admin_client().table(table).upsert(rows, on_conflict=on_conflict).execute()
+            return len(getattr(res, "data", None) or [])
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             if attempt == RETRY_ATTEMPTS - 1:

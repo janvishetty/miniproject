@@ -10,7 +10,7 @@ This document covers only what exists in the code today.
 |------|-------|--------|
 | 1 | Foundation and auth: config, Supabase clients, error format, logging, security headers, rate limiting, register / login / me / logout, roles, audit log, database schema | **Done** |
 | 2 | CSV ingestion (`data/` → `raw_events`, `events`, reference tables): admin-only routes, dry run, background jobs, audit summary | **Done** |
-| 3 | ML pipeline integration (`backend/ml/`, `fsia_cyber/` results → `pipeline_runs`, AI result tables) | Planned |
+| 3 | ML pipeline integration (`backend/ml/output/` → `pipeline_runs`, `ml_results`, `incidents`, `incident_events`, `rule_alerts`, `reports`, `dashboard_snapshots`): admin-only run / load routes. Code and tests are done; the first real load is pending (needs migration 004) | **Built, not yet loaded** |
 | 4 | Dashboard, report and Copilot APIs | Planned |
 | 5 | Hardening and deployment (pinned versions, trusted proxy headers, production config) | Planned |
 
@@ -59,8 +59,9 @@ Then open `backend/.env` and fill in your own values. The Supabase values are un
 | `CORS_ORIGINS` | No (default `http://localhost:5173`) | Comma-separated list of exact frontend origins. `*` is rejected. |
 | `AUTO_CONFIRM_EMAIL` | No (default `true`) | `true` = new accounts are confirmed immediately. `false` = Supabase must confirm the email before the user can log in. |
 | `DATA_DIR` | No (default `../data`) | Folder the ingestion routes read the five allowed CSV files from (see **Loading the data**). Used since Step 2. |
-| `ML_OUTPUT_DIR` | No (default `backend/ml/output`) | Folder with the ML module's output. Reserved for Step 3; not used yet. |
-| `ML_PYTHON` | No (default `python3`) | Python command for running the ML module. Reserved for Step 3; not used yet. |
+| `ML_OUTPUT_DIR` | No (default `backend/ml/output`) | Folder the pipeline routes read the ML module's generated files from (see **Loading the ML output**). |
+| `ML_PYTHON` | For `/admin/pipeline/run` | Python used to run the ML scripts. **Must be an absolute path to an existing executable** (for example `<REPO>/.venv/bin/python3`). The default `python3` is refused. Not needed for `load-existing`. |
+| `ML_STEP_TIMEOUT_SECONDS` | No (default `600`, allowed 10–3600) | Time allowed for each ML script before it is stopped. |
 
 The app checks the configuration at startup and refuses to start if a required value is missing, empty or still a placeholder (for example `PASTE_YOUR_...`). The error names the variable and the problem, never the value.
 
@@ -95,9 +96,9 @@ pytest
 
 [pytest.ini](pytest.ini) sets the import path and the `tests/` folder, so no extra flags are needed. Use `pytest -v` to see every test name.
 
-The full suite is **95 tests** (from the last full run).
+The full suite is **185 tests** (from the last full run).
 
-The tests never touch your real Supabase project and never read the real `data/` folder. [tests/conftest.py](tests/conftest.py) sets fake environment variables before the app is imported and replaces the Supabase clients with an in-memory fake (it supports select, insert, upsert, counts and simulated outages). Rate limiting is off during tests, except in the test that checks it.
+The tests never touch your real Supabase project, never read the real `data/` folder and never read the real `backend/ml/output/`. [tests/conftest.py](tests/conftest.py) sets fake environment variables before the app is imported and replaces the Supabase clients with an in-memory fake (it supports select with filters, ordering, paging and counts, insert, update, upsert, `rpc`, unique-key rules and simulated outages). Rate limiting is off during tests, except in the test that checks it.
 
 | File | What it covers |
 |------|----------------|
@@ -106,8 +107,11 @@ The tests never touch your real Supabase project and never read the real `data/`
 | [tests/test_auth_hardening.py](tests/test_auth_hardening.py) | `401` / `403` / `503` mapping for token and profile lookups (including Supabase `429` and `5xx`), no tokens or exception messages in logs, per-table counts in the ingestion audit entry |
 | [tests/test_normalize.py](tests/test_normalize.py) | CSV parsing and mapping: timestamps, blanks, Y/N, BOM, CRLF, rejected-row reporting, the file allowlist |
 | [tests/test_ingestion.py](tests/test_ingestion.py) | Ingestion routes: authorization (401 / 403 / 200), dry run, one job at a time (409), idempotent rerun, retry with backoff, summary, audit entry without row data |
+| [tests/test_ml_loader.py](tests/test_ml_loader.py) | Parsing of the ML output (`is_flagged` used, `"None"` → NULL, severity lowercase, stale reports), consistency checks, `dry_parse`, and the load against the fake database: already loaded, `force`, count mismatch, missing `set_current_run`, unknown event ids |
+| [tests/test_ml_adapter.py](tests/test_ml_adapter.py) | Script allowlist, absolute interpreter only, clean child environment (no `SUPABASE_*`), stdout discarded, timeout, stop at first failure (tiny fake scripts only) |
+| [tests/test_pipeline_routes.py](tests/test_pipeline_routes.py) | `/admin/pipeline/*`: 401 / 403 (analyst, manager) / 2xx for every route, 409s, dry runs, failed runs, audit entries |
 
-The ingestion tests read the small CSV files in [tests/fixtures/data/](tests/fixtures/data/).
+The ingestion tests read the small CSV files in [tests/fixtures/data/](tests/fixtures/data/); the pipeline tests read the synthetic files in [tests/fixtures/ml_output/](tests/fixtures/ml_output/).
 
 ## 5. API routes
 
@@ -125,6 +129,11 @@ The ingestion tests read the small CSV files in [tests/fixtures/data/](tests/fix
 | POST | `/admin/ingest/all?dry_run=false` | `admin` only | – | Starts a background job that loads everything, in this order: reference tables, then `raw_events`, then `events`. |
 | GET | `/admin/ingest/jobs/{job_id}` | `admin` only | – | Status and report of a job. `404` if the id is unknown (including after a server restart). |
 | GET | `/admin/ingest/summary` | `admin` only | – | CSV row counts next to the database row counts for `user_devices`, `threat_indicators`, `raw_events` and `events`. |
+| POST | `/admin/pipeline/run?force=false&dry_run=false` | `admin` only | – | Starts a background job: runs the five ML scripts in order, then loads their output. With `dry_run=true` the scripts still run (they rewrite `backend/ml/output/`), but the output is only parsed and checked, not loaded. |
+| POST | `/admin/pipeline/load-existing?force=false&dry_run=false` | `admin` only | – | Starts a background job that loads the files already in `ML_OUTPUT_DIR`. With `dry_run=true` it only parses and checks them. Missing files return `409` "run the pipeline first"; files from different runs return `409` with the reason. |
+| GET | `/admin/pipeline/runs?limit=20&offset=0` | `admin` only | – | Pipeline runs, newest first (`limit` 1–100). Returns `items`, `total`, `limit`, `offset`. |
+| GET | `/admin/pipeline/runs/{id}` | `admin` only | – | One run. `422` if `id` is not a uuid, `404` if unknown. |
+| GET | `/admin/pipeline/jobs/{job_id}` | `admin` only | – | Status and report of a pipeline job (`404` for unknown ids and for ingestion jobs). |
 | GET | `/docs`, `/redoc`, `/openapi.json` | Public, development only | – | API docs. Return `404` when `APP_ENV=production`. |
 
 Logged-in routes need the header `Authorization: Bearer <access_token>`.
@@ -137,7 +146,7 @@ Input rules for `/auth/register`:
 - `position`: one of `Security Analyst`, `Senior Analyst`, `SOC Manager`, `Threat Intelligence Lead`, `Compliance Officer`, `Platform Engineer`, `CISO / CTO` (must match the frontend's login form).
 - Unknown fields, including `role`, are ignored.
 
-Status codes: `401` = missing, malformed, invalid or expired token. `403` = valid user without permission, or no profile row. `409` = username or email already taken, or an ingestion job is already running. `422` = invalid input. `429` = this API's own rate limit reached. `503` = Supabase unavailable.
+Status codes: `401` = missing, malformed, invalid or expired token. `403` = valid user without permission, or no profile row. `409` = username or email already taken, another ingestion or pipeline job is already running, or the ML output is missing / inconsistent. `422` = invalid input. `429` = this API's own rate limit reached. `503` = Supabase unavailable.
 
 **Supabase problems return `503`, not `401`.** If Supabase cannot be reached, answers with a server error (`5xx`), or rate-limits the request (`429`) while the server checks a token, looks up the profile (`/auth/me` and every protected route) or signs a user in, the API returns `503 "Service temporarily unavailable"` (login returns `503 "Authentication service unavailable"`). Only a token that Supabase itself rejects with a `4xx` answer gives `401`. Clients can retry a `503` after a moment.
 
@@ -149,7 +158,7 @@ Every account has one role in `profiles.role`:
 |------|-----|-------|
 | `analyst` | Everyone who registers | Default. The public API can never set any other role. |
 | `manager` | Promoted by an admin | Exists in the schema; no route needs it yet. |
-| `admin` | Promoted by an admin | Can call `/admin/ping` and all `/admin/ingest/...` routes. |
+| `admin` | Promoted by an admin | Can call `/admin/ping`, all `/admin/ingest/...` routes and all `/admin/pipeline/...` routes. |
 
 **Promote a user to admin.** Run this in **Supabase → SQL Editor**, with the user's own email:
 
@@ -181,7 +190,7 @@ The ingestion routes copy the project's CSV files into Supabase. All of them nee
 **How a job behaves**
 
 - Each `POST` returns at once with a job record (`job_id`, `status: "running"`). The work runs in the background; poll `GET /admin/ingest/jobs/{job_id}` until `status` is `completed` or `failed`. Job records are kept in memory only, so they are lost when the server restarts.
-- **Only one job runs at a time.** Starting another while one is running returns `409 Conflict` (`"An ingestion job is already running"`). Wait for the first to finish, then try again.
+- **Only one job runs at a time, across ingestion and the pipeline.** Starting another while one is running returns `409 Conflict` (`"Another ingestion or pipeline job is already running"`). Wait for the first to finish, then try again.
 - **`dry_run=true`** parses and validates every row but writes nothing. The report shows `rows_read`, the rejected rows, and `rows_written: 0`; rows that would be written = `rows_read` minus `rejected_count`. `dry_run=false` (the default) writes to the database.
 - **Order.** `/admin/ingest/all` runs reference tables, then `raw_events`, then `events`.
 - **Safe to rerun.** Rows are written in chunks of 1000 with an upsert on the table's key (`user_id,device_id` / `ip_address` / `source_type,source_event_id` / `event_id`), so running the same load again never creates duplicates. Original ids (`E…`, `A…`, `T…`) are kept.
@@ -241,7 +250,72 @@ Replace every `<PLACEHOLDER>` with your own value. Never commit real credentials
 
 If a poll returns `503`, Supabase was briefly unreachable. The job itself keeps running; poll again.
 
-## 8. Security notes
+## 8. Loading the ML output (pipeline)
+
+The pipeline routes load Janvi's generated files into Supabase as one **pipeline run**. All of them need the `admin` role and share the one-job lock with ingestion.
+
+**Before the first load**
+
+1. Load the CSV data first (section 7): `ml_results`, `incident_events` and `rule_alerts` point at `events` rows.
+2. Run [sql/migrations/004_set_current_run.sql](sql/migrations/004_set_current_run.sql) **once** in **Supabase → SQL Editor** (migration 002 must already be applied). It creates `set_current_run(run_id)`, the only thing that switches which run is current. If it is missing, a load fails with `set_current_run missing: run migration 004`.
+3. For `/admin/pipeline/run`, set `ML_PYTHON` in `backend/.env` to an absolute path (see **Configuration**).
+
+**Generated files.** `backend/ml/output/` (and `data/processed/`) are produced by the ML scripts. They are git-ignored: never commit them, never edit or delete them by hand, and never use `git add -f`. The API only reads them. `POST /admin/pipeline/run` regenerates them (it overwrites the previous output). Only these files are ever read: `scored_auth.csv`, `scored_txn.csv`, `incidents.json`, `dashboard.json`, `pipeline_run.json`, `rule_alerts.csv` (required) and `reports.json` (optional; it needs Ollama and may not exist, in which case no reports are loaded).
+
+**What the run script step does.** `/admin/pipeline/run` runs `preprocess.py`, `features.py`, `model.py`, `incidents.py`, `frontend_data.py` in that order and stops at the first failure (the job reports the step name, exit code and the last 20 stderr lines, each cut to 200 characters). It never runs `summarize.py`, `copilot.py`, `evaluate.py`, `inject_test.py`, `review_sheet.py` or `export_samples.py`.
+
+**What a load does**
+
+- **Consistency first.** The same `pipeline_run_id` must be in `pipeline_run.json`, every incident and `dashboard.json`; otherwise the load stops with `409` and nothing is written.
+- **One run, fingerprinted.** Our own uuid identifies the run; Janvi's 12-character `pipeline_run_id` is stored as `pipeline_runs.source_fingerprint`, and the file's `created_at` goes into `notes` as `source_created_at=<value>`. If a **completed** run with the same fingerprint exists, the result is `already_loaded` and nothing is written. `force=true` instead re-upserts the data into that same run (no second run row; it does not change which run is current).
+- **Order.** `pipeline_runs` (status `running`) → `ml_results` (chunks of 1000) → `incidents` (chunks of 500) → `incident_events` → `rule_alerts` → `reports` → `dashboard_snapshots`. Then the row counts are verified, the run is marked `completed`, and `set_current_run` makes it current. If anything fails, the run is marked `failed` with `error_message` = exception type and step (no values), and the previous current run stays current. (A failed `force` reload is the one exception: it re-upserts identical data into an already completed run, so that run keeps its `completed` status and the job just fails.)
+- **Conversions and skips.** `is_flagged` (`1`/`0`) becomes `ml_results.is_anomalous`; `is_anomaly` is ignored; any other value is skipped and counted. An empty `flag_reason` becomes NULL. Severity is stored lowercase (`critical`, `high`, `medium`, `low`); other values are skipped. Naive timestamps are treated as UTC. `ip_threat_level` `"None"` becomes NULL (the original object, including its own `pipeline_run_id` key, is kept in `incidents.raw`). Rows with unparsable numbers are skipped. Event ids that are not in `events` are skipped and counted for `ml_results`, `incident_events` and `rule_alerts`. The report lists skip counts per table under `skip_reasons`.
+- **Reports.** Only reports whose `pipeline_run_id` equals the run's fingerprint are loaded; older ones are skipped and counted as `stale_reports`.
+- **`rule_alerts` is global.** It has no run column and is unique on (`event_id`, `rule_id`). Each load upserts all alerts, including the context-only ones (`R_IMPOSSIBLE_TRAVEL_CANDIDATE`, `R_NEW_BENEFICIARY`), and nothing is ever deleted, so alerts from older runs stay.
+- **Retries.** Upserts are retried like ingestion (4 attempts). The `pipeline_runs` insert and the `set_current_run` call are never retried.
+
+### How to load the ML output
+
+Replace every `<PLACEHOLDER>`. Use the admin token from the data-loading steps above.
+
+1. **Check first (no database writes):**
+
+   ```bash
+   curl -s -X POST "http://127.0.0.1:8000/admin/pipeline/load-existing?dry_run=true" -H "Authorization: Bearer $TOKEN"
+   curl -s http://127.0.0.1:8000/admin/pipeline/jobs/<JOB_ID> -H "Authorization: Bearer $TOKEN"
+   ```
+
+   The report shows the fingerprint, per-table counts, skips and consistency checks.
+2. **Load:**
+
+   ```bash
+   curl -s -X POST "http://127.0.0.1:8000/admin/pipeline/load-existing" -H "Authorization: Bearer $TOKEN"
+   ```
+
+   Poll the job as above until `status` is `completed`. Use `POST /admin/pipeline/run` instead if the files need to be regenerated first.
+3. **Check the run:** `GET /admin/pipeline/runs` (the newest run should be `completed` with `is_current: true`).
+
+### Cleaning up failed runs (you run this, not the API)
+
+The API never deletes anything. A failed run leaves a `failed` row in `pipeline_runs` plus whatever it had written; it never blocks a new load. To remove them, run this yourself in **Supabase → SQL Editor**. Review the first query before running the second.
+
+```sql
+-- 1. look first
+select id, status, is_current, started_at, error_message
+from public.pipeline_runs
+where status in ('failed', 'running')
+order by started_at desc;
+
+-- 2. delete failed runs only (never a completed or current run).
+--    Cascades to ml_results, incidents, incident_events, reports, dashboard_snapshots.
+--    rule_alerts is global and is not touched.
+delete from public.pipeline_runs
+where status = 'failed' and not is_current;
+```
+
+A `running` row that never finished (for example the server stopped mid-load) is not deleted by this; look at it in query 1 first.
+
+## 9. Security notes
 
 - **Secrets.** `backend/.env` is ignored by git (root `.gitignore` ignores `.env` and `.env.*` and keeps only `.env.example`). Never commit it and never put the service role key in the frontend.
 - **Row Level Security** is on for every table, with **no policies**. The public anon key can read and write nothing. Only this server, using the service role key, can access the data.
@@ -256,12 +330,14 @@ If a poll returns `503`, Supabase was briefly unreachable. The job itself keeps 
 - **Logging rules.** The access log records only method, path (no query string), status and time. Headers and bodies are never logged. Errors are logged by exception type only, because messages can contain user data.
 - **Login failures look the same.** A wrong password and an unknown email both return `401 "Invalid email or password"`.
 - **Audit log.** Register, login, failed login and logout are written to `audit_log` with the client IP. Passwords and tokens are never stored there. If the audit write fails, the request still succeeds. When an ingestion job finishes, one `ingest.job_finished` entry records the job kind, status, the `source` / `dry_run` settings and, per table, only the numbers `rows_read`, `rows_written` and `rejected_count`. Raw records, rejected-row samples and personal data are never stored there.
+- **Pipeline audit entries.** `pipeline.job_started` and `pipeline.job_finished` record the job kind, status, settings (`force`, `dry_run`), the outcome (`loaded`, `already_loaded`, `reloaded`, `dry_run`), per-table counts and, for script runs, each step's name and exit code. Never row values, stdout or stderr.
+- **Running the ML scripts.** Only the five allowlisted scripts run, with a fixed command line, no shell, no stdin, a timeout, and an environment that contains only `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` and `PYTHONUNBUFFERED` (so no `SUPABASE_*` keys). The scripts' stdout is thrown away, because it contains user ids, IPs and amounts.
 - **Auth lookup failures.** Errors while checking a token or loading a profile are logged by exception type only, never the token or the exception message. A Supabase outage gives `503`; only a token Supabase rejects gives `401`.
 - **Response headers** on every response: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`.
 - **CORS** allows only the origins in `CORS_ORIGINS`, with credentials off (tokens travel in the `Authorization` header, not cookies).
 - **Rate limits** are per client IP. Behind a proxy every request may look like it comes from the proxy; trusted proxy headers are planned for Step 5.
 
-## 9. Folder layout
+## 10. Folder layout
 
 ```
 backend/
@@ -276,22 +352,27 @@ backend/
 │   ├── security.py     get_current_user (401 / 403 / 503 mapping), require_role
 │   ├── errors.py       the JSON error format
 │   ├── audit.py        writes to audit_log
+│   ├── jobs.py         in-memory job store and the one lock shared by ingestion and pipeline jobs
 │   ├── rate_limit.py   per-IP rate limiter
 │   ├── constants.py    positions and roles
-│   ├── routers/        health.py, auth.py, admin.py, ingest.py
+│   ├── routers/        health.py, auth.py, admin.py, ingest.py, pipeline.py
 │   └── services/       normalize.py (CSV parsing and mapping, no database),
-│                       ingestion.py (chunked upserts, dry run, retries, summary)
+│                       ingestion.py (chunked upserts, dry run, retries, summary),
+│                       ml_adapter.py (runs the allowlisted ML scripts safely),
+│                       ml_loader.py (parses and loads ml/output as one pipeline run),
+│                       pipeline.py (glue for the pipeline routes)
 ├── sql/
 │   ├── schema.sql          creates all tables, indexes and RLS
-│   └── verify_schema.sql   read-only checks
+│   ├── verify_schema.sql   read-only checks
+│   └── migrations/         002_ml_fields.sql (applied), 004_set_current_run.sql (run once)
 ├── tests/              pytest tests with a fake Supabase
-│   └── fixtures/data/  small CSV files used by the ingestion tests
+│   └── fixtures/       data/ (small CSVs) and ml_output/ (synthetic ML output) for the tests
 └── ml/                 Janvi's ML module (read-only for the API)
 ```
 
 **Read-only for the API:** `backend/ml/` (Janvi) and `fsia_cyber/` (Aarushi, at the repo root) belong to other team members. The API must never modify them. Later steps will only read their output.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Likely cause | Fix |
 |---------|--------------|-----|
@@ -306,7 +387,12 @@ backend/
 | `/admin/ping` returns `403` | The user's role is not `admin` | Promote the user (see **Roles**). |
 | `429 Too many requests` | Rate limit reached (login 5/min, register 10/min) | Wait about a minute and try again. |
 | `503 Service temporarily unavailable` on a logged-in route | Supabase could not be reached, returned a server error, or rate-limited the token / profile lookup | Check the Supabase project is active and reachable, then retry. The token is not necessarily bad. |
-| `409 An ingestion job is already running` | Another `/admin/ingest/...` job has not finished | Poll `GET /admin/ingest/jobs/<JOB_ID>` until it is `completed` or `failed`, then start the next one. |
+| `409 Another ingestion or pipeline job is already running` | An `/admin/ingest/...` or `/admin/pipeline/...` job has not finished | Poll its jobs route (`/admin/ingest/jobs/<JOB_ID>` or `/admin/pipeline/jobs/<JOB_ID>`) until it is `completed` or `failed`, then start the next one. |
+| `409 Pipeline output is missing (run the pipeline first)` | Required files are not in `ML_OUTPUT_DIR` | Run `POST /admin/pipeline/run`, or run Janvi's scripts yourself (see `backend/ml/README.md`), then load again. |
+| `409 pipeline_run_id differs ...` | The output files come from different pipeline runs | Rerun the pipeline so every file is regenerated together. Nothing was written. |
+| A pipeline job fails with `set_current_run missing: run migration 004` | `sql/migrations/004_set_current_run.sql` was not run in Supabase | Run it once in the SQL Editor, then load again. The run is marked `failed` and the previous current run is untouched. |
+| A pipeline job fails with `ML_PYTHON must be an absolute path ...` | `ML_PYTHON` is unset or relative | Set `ML_PYTHON` in `backend/.env` to an absolute path such as `<REPO>/.venv/bin/python3`. |
+| A load returns `already_loaded` | A completed run with the same `pipeline_run_id` fingerprint already exists | Nothing to do. Use `force=true` only to re-upsert the same data into that run. |
 | `GET /admin/ingest/jobs/<JOB_ID>` returns `404` | Unknown id, or the server restarted (job records are in memory) | Check `/admin/ingest/summary` for what is in the database; rerunning a load is safe. |
 | An ingestion job ends with `status: "failed"` | A database write still failed after 4 attempts | Check Supabase is reachable, then run the load again; upserts make a rerun safe. |
 | `/docs` returns `404` | `APP_ENV=production` | Use `APP_ENV=development` locally. |

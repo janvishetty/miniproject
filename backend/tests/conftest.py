@@ -15,7 +15,7 @@ os.environ.update({
 import pytest
 from fastapi.testclient import TestClient
 
-from app import config, database, security
+from app import config, database, jobs, security
 from app.rate_limit import limiter
 from app.routers import auth as auth_router
 
@@ -38,10 +38,52 @@ class FakeEmailExists(Exception):
         super().__init__("A user with this email address has already been registered")
 
 
+class FakeRpcMissing(Exception):
+    code = "PGRST202"
+
+    def __init__(self):
+        super().__init__("Could not find the function public.set_current_run in the schema cache")
+
+
 class _Result:
     def __init__(self, data):
         self.data = data
         self.count = None
+
+
+# Tables whose rows get a generated uuid "id" (like gen_random_uuid() in schema.sql).
+_UUID_ID_TABLES = {"pipeline_runs", "incidents", "ml_results", "reports", "dashboard_snapshots"}
+
+# Unique rules: (columns, predicate). Mirrors schema.sql / migration 002 (partial indexes).
+_UNIQUE_RULES = {
+    "pipeline_runs": [
+        (("source_fingerprint",), lambda r: r.get("source_fingerprint") is not None
+         and r.get("status") == "completed"),
+        (("is_current",), lambda r: bool(r.get("is_current"))),
+    ],
+    "incidents": [(("pipeline_run_id", "external_id"), lambda r: True)],
+}
+
+
+def _apply_defaults(table, row):
+    if table in _UUID_ID_TABLES and "id" not in row:
+        row["id"] = str(uuid.uuid4())
+    if table == "pipeline_runs":
+        row.setdefault("status", "running")
+        row.setdefault("is_current", False)
+        row.setdefault("trigger", "manual")
+
+
+def _enforce_unique(table, rows):
+    for cols, applies in _UNIQUE_RULES.get(table, []):
+        seen = set()
+        for r in rows:
+            if not applies(r):
+                continue
+            key = tuple(r.get(c) for c in cols)
+            if key in seen:
+                raise FakeDuplicate()
+            seen.add(key)
 
 
 class _Query:
@@ -49,6 +91,27 @@ class _Query:
         self.store, self.name = store, name
         self.op, self.payload, self.filters, self.n = "select", None, [], None
         self.on_conflict, self.count_mode = None, None
+        self.in_filters, self.order_by, self.range_, self.update_values = [], None, None, None
+
+    def in_(self, col, values):
+        self.in_filters.append((col, list(values)))
+        return self
+
+    def order(self, col, desc=False):
+        self.order_by = (col, desc)
+        return self
+
+    def range(self, start, end):
+        self.range_ = (start, end)
+        return self
+
+    def update(self, values):
+        self.op, self.update_values = "update", values
+        return self
+
+    def _matches(self, r):
+        return (all(r.get(c) == v for c, v in self.filters)
+                and all(r.get(c) in vals for c, vals in self.in_filters))
 
     def select(self, *_a, count=None, **_k):
         self.op = "select"
@@ -87,27 +150,73 @@ class _Query:
                 for r in rows:
                     if r["username"] == self.payload["username"]:
                         raise FakeDuplicate()
-            rows.append(dict(self.payload))
-            return _Result([self.payload])
+            new_row = dict(self.payload)
+            _apply_defaults(self.name, new_row)
+            rows.append(new_row)
+            _enforce_unique(self.name, rows)
+            return _Result([dict(new_row)])
+        if self.op == "update":
+            changed = [r for r in rows if self._matches(r)]
+            for r in changed:
+                r.update(self.update_values)
+            _enforce_unique(self.name, rows)
+            return _Result([dict(r) for r in changed])
         if self.op == "upsert":
             incoming = self.payload if isinstance(self.payload, list) else [self.payload]
             key_fields = (self.on_conflict or "").split(",")
+            drop = self.store.silent_drop_upserts.get(self.name, 0)   # test hook: stored rows < echoed rows
             written = []
-            for new_row in incoming:
+            for n, new_row in enumerate(incoming):
+                stored = dict(new_row)
                 key = tuple(new_row.get(k) for k in key_fields)
                 for i, existing in enumerate(rows):
                     if tuple(existing.get(k) for k in key_fields) == key:
-                        rows[i] = dict(new_row)
+                        if n < len(incoming) - drop:
+                            if "id" in existing:
+                                stored.setdefault("id", existing["id"])
+                            rows[i] = stored
                         break
                 else:
-                    rows.append(dict(new_row))
+                    if n < len(incoming) - drop:
+                        _apply_defaults(self.name, stored)
+                        rows.append(stored)
                 written.append(new_row)
+            _enforce_unique(self.name, rows)
             return _Result(written)
-        found = [r for r in rows if all(r.get(c) == v for c, v in self.filters)]
-        result = _Result(found[: self.n] if self.n else found)
+        found = [r for r in rows if self._matches(r)]
+        if self.order_by:
+            col, desc = self.order_by
+            found = sorted(found, key=lambda r: (r.get(col) is None, r.get(col)), reverse=desc)
+        total = len(found)
+        if self.range_:
+            found = found[self.range_[0]: self.range_[1] + 1]
+        elif self.n:
+            found = found[: self.n]
+        result = _Result(found)
         if self.count_mode:
-            result.count = len(found)
+            result.count = total
         return result
+
+
+class _Rpc:
+    def __init__(self, store, name, params):
+        self.store, self.name, self.params = store, name, params
+
+    def execute(self):
+        self.store.rpc_calls.append((self.name, dict(self.params)))
+        if self.store.fail_rpc == "missing":
+            raise FakeRpcMissing()
+        if self.store.fail_rpc == "error":
+            raise RuntimeError("simulated rpc failure")
+        if self.name == "set_current_run":
+            runs = self.store.tables.setdefault("pipeline_runs", [])
+            target = next((r for r in runs if r.get("id") == self.params.get("run_id")), None)
+            if target is None or target.get("status") != "completed":
+                raise RuntimeError("pipeline run is not completed")
+            for r in runs:                       # same atomic effect as the SQL function
+                r["is_current"] = False
+            target["is_current"] = True
+        return _Result(None)
 
 
 class FakeSupabase:
@@ -118,6 +227,9 @@ class FakeSupabase:
         self.fail_tables: dict[str, bool] = {}     # every query on the table fails
         self.fail_inserts: dict[str, bool] = {}    # only inserts on the table fail
         self.fail_upserts_times: dict[str, int] = {}  # upsert on the table fails N times, then succeeds
+        self.silent_drop_upserts: dict[str, int] = {}  # upsert echoes all rows but stores N fewer (count-mismatch test)
+        self.fail_rpc: str | None = None               # None | "missing" | "error"
+        self.rpc_calls: list[tuple[str, dict]] = []
         self.users: dict[str, dict] = {}          # id -> {email, password}
         self.auth = SimpleNamespace(
             admin=SimpleNamespace(
@@ -131,6 +243,9 @@ class FakeSupabase:
 
     def table(self, name):
         return _Query(self, name)
+
+    def rpc(self, name, params):
+        return _Rpc(self, name, params)
 
     # --- fake auth admin ---
     def _create_user(self, attrs):
@@ -169,6 +284,13 @@ def fake(monkeypatch):
     monkeypatch.setattr(auth_router, "AUTH_ERRORS", (FakeAuthError,))
     monkeypatch.setattr(security, "AUTH_ERRORS", (FakeAuthError,))
     return f
+
+
+@pytest.fixture(autouse=True)
+def _reset_jobs():
+    jobs.reset()
+    yield
+    jobs.reset()
 
 
 @pytest.fixture(autouse=True)

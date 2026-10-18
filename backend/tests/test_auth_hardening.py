@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import pytest
 
 from app import security
-from app.routers import ingest as ingest_router
 from app.services import ingestion
 from conftest import FakeAuthError
 
@@ -144,8 +143,6 @@ def test_profile_outage_logs_no_exception_message(client, fake, valid_body, capl
 # --------------------- ingestion audit entry carries counts ---------------------
 def test_ingest_audit_entry_has_per_table_counts_only(client, fake, valid_body, monkeypatch):
     monkeypatch.setattr(ingestion, "get_settings", lambda: SimpleNamespace(DATA_DIR=FIXTURES))
-    ingest_router._jobs.clear()
-    ingest_router._active_job_id = None
     client.post("/auth/register", json=valid_body)
     fake.tables["profiles"][0]["role"] = "admin"
     tok = client.post("/auth/login", json={"email": valid_body["email"],
@@ -172,5 +169,3 @@ def test_ingest_audit_entry_has_per_table_counts_only(client, fake, valid_body, 
     blob = str(entry)
     assert "U0001" not in blob and "D00001" not in blob and "3633.85" not in blob
     assert "rejected_samples" not in blob
-    ingest_router._jobs.clear()
-    ingest_router._active_job_id = None

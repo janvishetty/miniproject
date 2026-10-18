@@ -1,0 +1,82 @@
+[
+ {
+  "id": "INC-2026-9001",
+  "sev": "critical",
+  "status": "OPEN",
+  "title": "Synthetic Account Takeover",
+  "asset": "payments-api /api/v1/transfer",
+  "ip": "10.0.0.1",
+  "analyst": "Unassigned",
+  "vector": "Account Takeover",
+  "created": "00:00",
+  "confidence": 100,
+  "impact": 90,
+  "risk_score": 95.0,
+  "start": "2026-09-01T00:00:01",
+  "end": "2026-09-01T00:01:01",
+  "users": [
+   "U9001"
+  ],
+  "ips": [
+   "10.0.0.1"
+  ],
+  "event_ids": [
+   "E900001",
+   "E900002",
+   "T900001"
+  ],
+  "event_count": 3,
+  "amount_total": 100.0,
+  "ip_threat_level": "None",
+  "ip_details": [
+   {
+    "ip": "10.0.0.1",
+    "threat": "None",
+    "usual_for_user": true
+   }
+  ],
+  "reasons": [
+   {
+    "feature": "ip_threat_score",
+    "impact": 0.5,
+    "text": "IP on threat list (High)"
+   }
+  ],
+  "sequence": {
+   "failed_logins": [],
+   "failed_window": null,
+   "successful_logins": [],
+   "transfers": []
+  },
+  "timeline": [
+   {
+    "time": "00:00",
+    "actor": "Rule Engine",
+    "msg": "synthetic",
+    "color": "red"
+   }
+  ],
+  "detected_by": "ml+rules",
+  "ml_severity": "high",
+  "rule_severity": "critical",
+  "rule_hits": [
+   {
+    "rule": "R_BRUTE_FORCE",
+    "name": "Brute force",
+    "events": 2,
+    "first": "00:00"
+   }
+  ],
+  "ml_event_ids": [
+   "E900001",
+   "T900001"
+  ],
+  "rule_mitre": [
+   "T1110 Brute Force"
+  ],
+  "threat_intel": null,
+  "threat_actor": "Unknown - IP not on any threat feed",
+  "ai_summary": "Synthetic summary.",
+  "pipeline_run_id": "abc123def456"
+ }
+]
