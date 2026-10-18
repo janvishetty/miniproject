@@ -15,10 +15,13 @@ from app.config import get_settings
 from app.errors import (http_exception_handler, rate_limit_handler,
                         unhandled_exception_handler, validation_exception_handler)
 from app.rate_limit import limiter
-from app.routers import admin, auth, health, ingest, pipeline
+from app.routers import admin, auth, copilot, dashboard, health, incidents, ingest, pipeline, reports
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 access_log = logging.getLogger("fsia.access")
+# httpx logs every Supabase request URL (they contain user ids): keep them out of the log.
+for _noisy in ("httpx", "httpcore"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 
 def create_app() -> FastAPI:
@@ -72,6 +75,10 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(ingest.router)
     app.include_router(pipeline.router)
+    app.include_router(dashboard.router)
+    app.include_router(incidents.router)
+    app.include_router(reports.router)
+    app.include_router(copilot.router)
     return app
 
 

@@ -1,6 +1,6 @@
 # FSIA project rules (read before every task)
 ## Ownership
-- NEVER modify backend/ml/ (Janvi), fsia_cyber/ (Aarushi), frontend/ (unless I name the exact files), data/.
+- NEVER modify backend/ml/ (Janvi), fsia_cyber/ (Aarushi), data/.
 - Backend code: backend/app/, backend/sql/, backend/tests/, backend/README.md, docs/.
 ## Secrets and git
 - Secrets only in backend/.env. Never open, print, log or commit it. Never echo env values.
@@ -17,3 +17,4 @@
 - Run tests after every change. Never claim anything passed unless you ran it and show the output.
 - Logs and errors: exception TYPE only, no row values, no tokens.
 - If something in the files differs from what I told you, report it; do not "fix" the data to match.
+- frontend/: Anushka owns it (18 Oct 2026). Change only the files I name for each task. Reuse theme.ts colours and ui.tsx components; new UI (login switch, Resolve button) must use them, no new styles or libraries. Diff first, wait for "apply". Frontend work never shares a branch with backend work.

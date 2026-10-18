@@ -1,5 +1,6 @@
 """Test helpers: a fake Supabase so tests never touch the real project."""
 import os
+import re
 import uuid
 from types import SimpleNamespace
 
@@ -86,19 +87,46 @@ def _enforce_unique(table, rows):
             seen.add(key)
 
 
+def _like_regex(pattern):
+    """SQL LIKE (backslash escape, % and _ wildcards) as a case-insensitive regex."""
+    out, i = [], 0
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "\\" and i + 1 < len(pattern):
+            out.append(re.escape(pattern[i + 1]))
+            i += 1
+        elif ch == "%":
+            out.append(".*")
+        elif ch == "_":
+            out.append(".")
+        else:
+            out.append(re.escape(ch))
+        i += 1
+    return re.compile("^" + "".join(out) + "$", re.IGNORECASE | re.DOTALL)
+
+
 class _Query:
     def __init__(self, store, name):
         self.store, self.name = store, name
         self.op, self.payload, self.filters, self.n = "select", None, [], None
         self.on_conflict, self.count_mode = None, None
-        self.in_filters, self.order_by, self.range_, self.update_values = [], None, None, None
+        self.in_filters, self.order_by, self.range_, self.update_values = [], [], None, None
+        self.neq_filters, self.like_filters = [], []
 
     def in_(self, col, values):
         self.in_filters.append((col, list(values)))
         return self
 
-    def order(self, col, desc=False):
-        self.order_by = (col, desc)
+    def order(self, col, desc=False, nullsfirst=None):
+        self.order_by.append((col, desc, nullsfirst))      # several order() calls = several sort keys
+        return self
+
+    def neq(self, col, val):
+        self.neq_filters.append((col, val))
+        return self
+
+    def ilike(self, col, pattern):
+        self.like_filters.append((col, _like_regex(pattern)))
         return self
 
     def range(self, start, end):
@@ -111,7 +139,9 @@ class _Query:
 
     def _matches(self, r):
         return (all(r.get(c) == v for c, v in self.filters)
-                and all(r.get(c) in vals for c, vals in self.in_filters))
+                and all(r.get(c) != v for c, v in self.neq_filters)
+                and all(r.get(c) in vals for c, vals in self.in_filters)
+                and all(isinstance(r.get(c), str) and rx.search(r[c]) for c, rx in self.like_filters))
 
     def select(self, *_a, count=None, **_k):
         self.op = "select"
@@ -184,9 +214,11 @@ class _Query:
             _enforce_unique(self.name, rows)
             return _Result(written)
         found = [r for r in rows if self._matches(r)]
-        if self.order_by:
-            col, desc = self.order_by
-            found = sorted(found, key=lambda r: (r.get(col) is None, r.get(col)), reverse=desc)
+        for col, desc, nullsfirst in reversed(self.order_by):    # stable: last key first
+            present = sorted((r for r in found if r.get(col) is not None), key=lambda r: r[col], reverse=desc)
+            nulls = [r for r in found if r.get(col) is None]
+            nulls_first = desc if nullsfirst is None else nullsfirst   # Postgres default: NULLs are "largest"
+            found = nulls + present if nulls_first else present + nulls
         total = len(found)
         if self.range_:
             found = found[self.range_[0]: self.range_[1] + 1]
