@@ -111,6 +111,7 @@ def readability_problems(text):
 
 def load():
     inc = json.loads((OUT / "incidents.json").read_text())
+    inc.sort(key=lambda i: (-i["risk_score"], i["start"]))      # never rely on the file's order
     rp = OUT / "reports.json"
     reports = {r["id"]: r for r in json.loads(rp.read_text())} if rp.exists() else {}
     return inc, reports
@@ -426,7 +427,7 @@ def welcome():
              f"{sev.get('medium', 0)} medium, {sev.get('low', 0)} low.",
              "By type: " + ", ".join(f"{v} {k}" for k, v in vec.most_common()) + ".",
              f"Amount in account-takeover transfers: **₹{money:,.0f}**.", "", "**Highest-risk incidents**"]
-    lines += [f"{n}. **{i['id']}** - {i['title']} (risk {i['risk_score']:.0f})" for n, i in enumerate(crit, 1)]
+    lines += [f"{n}. **{i['id']}** - {i['title']} (risk {i['risk_score']:.1f})" for n, i in enumerate(crit, 1)]
     lines += ["", "Ask me about any incident ID, user (U0214), IP, transaction (T002428) or attack type."]
     return {"question": None, "answer": "\n".join(lines), "incidents": [i["id"] for i in crit],
             "source": "facts", "grounding": {"grounded": True, "unverified": []}, "seconds": 0.0}

@@ -286,6 +286,11 @@ def grounding_check(text, facts, inc=None, summary=None):
     problems += [f'non-rupee currency: "{m.group(0)}"' for m in FOREIGN_CCY.finditer(text)]
     problems += [f"malformed ID: {m.group(0)}" for m in BAD_ID.finditer(text)]
     problems += [f'user ID used as transaction: "{m.group(0)}"' for m in USER_AS_TXN.finditer(text)]
+    # a transaction ID (T……) is a transfer: it can't describe a login, device or session
+    for sent in re.split(r"(?<=[.!?])\s+|\n", text):
+        if re.search(r"\bT\d{6}\b", sent) and re.search(r"\b(?:log\s?-?in|device|session|sign-?in)\b", sent, re.I) \
+                and not re.search(r"\b(?:transfer\w*|transaction\w*|payment\w*|paid|sent|moved|₹)", sent, re.I):
+            problems.append(f'transaction ID used for a login/device: "{sent.strip()[:80]}"')
     for q in QUOTED.findall(text):                     # quoted names (merchants etc.) must exist in facts
         if q.lower() not in facts.lower():
             problems.append(f"name not in facts: '{q}'")
