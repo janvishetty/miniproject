@@ -70,7 +70,7 @@ backend's AI bridge.
 
 | Page | What it does |
 |---|---|
-| Login | Sign-in only; accounts are created by an admin via the API for now. |
+| Login | Sign-in only. Each teammate registers their own account via /docs (starts as analyst); an admin promotes roles in Supabase (see section 7). |
 | Dashboard | Counts, severity and type breakdowns for the current pipeline run. |
 | Incidents | Search and filter by severity/status, paging, incident detail with timeline, "Why it was flagged" (SHAP and rule reasons) and AI analysis; Investigate / Contain / Resolve (manager/admin) status changes. |
 | Reports | AI-generated, fact-checked reports for critical and high incidents; any incident's report can be generated on demand from its page. |
