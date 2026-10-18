@@ -511,3 +511,23 @@ How it works:
 Tests: `test_dashboard.py`, `test_incidents.py`, `test_reports.py`, `test_copilot_bridge.py` (includes a real
 `bridge_cli.py` subprocess run and a check that it imports without `app`), `test_step4_misc.py` (log level, force reload),
 all with the fake Supabase (`soc_seed.py` seeds one run).
+
+## 13. Demo reset
+
+`scripts/demo_reset.py` puts the incident statuses back to a known demo state through the running API (nothing
+touches the database directly). Standard library only; run it from `backend/` with the API running.
+
+```bash
+python scripts/demo_reset.py --dry-run   # show what would change, change nothing
+python scripts/demo_reset.py             # asks for email and password, then asks you to type "yes"
+```
+
+- Log in as a **manager or admin** (analysts cannot set `RESOLVED`; the script stops before changing anything).
+- Every `INVESTIGATING`, `CONTAINED` and `RESOLVED` incident goes back to `OPEN`, then the demo states in the
+  `DEMO_STATES` dict at the top of the script are set (`INC-2026-0149` INVESTIGATING, `INC-2026-0187` CONTAINED,
+  `INC-2026-0019` RESOLVED). An incident that is already in its demo state is left alone.
+- It prints one line per change (`INC-... CONTAINED -> OPEN`) and the counts by status at the end.
+- Options: `--api URL` (default `http://127.0.0.1:8000`), `--dry-run`, `--yes` (skip the confirmation question).
+- The token is kept in memory only; neither it nor the password is printed or logged. Each change writes the usual
+  `incident.updated` audit row.
+- Errors: `401` wrong email or password, `403` not a manager or admin, "connection refused" the API is not running.
