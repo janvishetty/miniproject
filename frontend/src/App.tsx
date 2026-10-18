@@ -277,7 +277,7 @@ export default function App() {
       {/* ── Page content ── */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {tab === "DASHBOARD"   && <DashboardPage  {...pageProps} onNavigate={setTab}/>}
-        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps} onChanged={refreshCritical}/>}
+        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps} role={user.role} onChanged={refreshCritical}/>}
         {tab === "LLI REPORTS" && <LLIReportsPage {...pageProps}/>}
         {tab === "AI COPILOT"  && <AICopilotPage  {...pageProps}/>}
       </div>

@@ -85,7 +85,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.3 }}>{node.id}</div>
                   <ProgressBar value={node.score} color={color} t={t}/>
                   {node.alerts > 0
-                    ? <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 5 }}>⚠ {node.alerts} alerts</div>
+                    ? <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 5 }}>⚠ {node.alerts} {node.alerts === 1 ? "alert" : "alerts"}</div>
                     : <div style={{ fontSize: 11, color: t.green, marginTop: 5 }}>✓ Clear</div>}
                 </div>
               );
@@ -94,12 +94,12 @@ export default function DashboardPage({ t, onNavigate }: Props) {
         </Card>
 
         {/* Live event feed */}
-        <Card t={t} style={{ padding: "20px 20px", display: "flex", flexDirection: "column" }}>
+        <Card t={t} style={{ padding: "20px 20px", display: "flex", flexDirection: "column", maxHeight: 560 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <div className="live-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: t.green, flexShrink: 0 }}/>
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: t.text }}>Live Events</h2>
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" }}>
             {stream.length === 0 && <div style={{ fontSize: 12, color: t.textMuted }}>No live events in this run.</div>}
             {stream.map((e, i) => (
               <div key={i} className={i === 0 ? "animate-slideIn" : ""} style={{ display: "flex", gap: 10, padding: "8px 10px", background: t.bg, borderRadius: t.radiusSm, alignItems: "flex-start" }}>

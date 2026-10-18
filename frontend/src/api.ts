@@ -110,6 +110,13 @@ export type Report = {
   source: string | null; grounded: boolean | null; unverified: unknown[]; created_at: string | null;
 };
 
+export type ReportJob = {
+  job_id: string; incident_id: string; status: "running" | "completed" | "failed";
+  error: { code: string; message: string } | null;
+  result: { incident_id: string; source: string | null; grounded: boolean | null } | null;
+  started_at?: string | null; finished_at?: string | null;
+};
+
 export type CopilotAnswer = {
   answer: string | null; incidents: string[]; source: string | null; grounding: unknown; seconds: number | null;
 };
@@ -195,6 +202,11 @@ export const listReports = (page = 1, pageSize = 20) =>
   request<Page<Report>>("GET", `/reports${qs({ page, page_size: pageSize })}`);
 export const getReport = (id: string) =>
   request<Report>("GET", `/reports/${encodeURIComponent(id)}`);
+
+export const startReport = (id: string) =>
+  request<ReportJob>("POST", `/incidents/${encodeURIComponent(id)}/report`);
+export const getReportJob = (jobId: string) =>
+  request<ReportJob>("GET", `/reports/jobs/${encodeURIComponent(jobId)}`);
 
 export const copilot = (question: string) =>
   request<CopilotAnswer>("POST", "/copilot", { body: { question }, timeoutMs: COPILOT_TIMEOUT_MS });
