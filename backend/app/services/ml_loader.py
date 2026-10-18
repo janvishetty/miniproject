@@ -586,7 +586,21 @@ def load(output_dir: Path, force: bool = False) -> dict:
             "ml_results", ml_rows, "pipeline_run_id,event_id", ML_CHUNK))
 
         step = "incidents"
-        incident_rows = [{**r, "pipeline_run_id": run_id} for r in parsed.incidents]
+        # Force into an existing run: incidents that already exist keep the status and analyst
+        # people set in the app; the file only supplies them for incidents that are new.
+        carried = {}
+        if not created_new:
+            carried = {r["external_id"]: r for r in _paged_select(
+                "incidents", "external_id,status,analyst", "external_id", pipeline_run_id=run_id)}
+        incident_rows = []
+        for r in parsed.incidents:
+            row = {**r, "pipeline_run_id": run_id}
+            old = carried.get(r["external_id"])
+            if old and old.get("status") in STATUSES:
+                row["status"] = old["status"]
+            if old and old.get("analyst"):
+                row["analyst"] = old["analyst"]
+            incident_rows.append(row)
         timed("incidents", lambda: _upsert_chunks(
             "incidents", incident_rows, "pipeline_run_id,external_id", INCIDENT_CHUNK))
 

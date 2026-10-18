@@ -25,6 +25,7 @@ _CODES = {
     422: "validation_error",
     429: "rate_limited",
     503: "unavailable",
+    504: "gateway_timeout",
 }
 
 

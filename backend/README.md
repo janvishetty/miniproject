@@ -419,12 +419,17 @@ backend/
 │   ├── jobs.py         in-memory job store and the one lock shared by ingestion and pipeline jobs
 │   ├── rate_limit.py   per-IP rate limiter
 │   ├── constants.py    positions and roles
-│   ├── routers/        health.py, auth.py, admin.py, ingest.py, pipeline.py
+│   ├── report_jobs.py  in-memory report jobs with their own one-at-a-time lock
+│   ├── ml_bridge/      bridge_cli.py (runs under ML_PYTHON: stdlib + backend/ml only)
+│   ├── routers/        health.py, auth.py, admin.py, ingest.py, pipeline.py,
+│   │                   dashboard.py, incidents.py, reports.py, copilot.py
 │   └── services/       normalize.py (CSV parsing and mapping, no database),
 │                       ingestion.py (chunked upserts, dry run, retries, summary),
 │                       ml_adapter.py (runs the allowlisted ML scripts safely),
 │                       ml_loader.py (parses and loads ml/output as one pipeline run),
-│                       pipeline.py (glue for the pipeline routes)
+│                       pipeline.py (glue for the pipeline routes),
+│                       incident_store.py (current-run reads, search, PATCH rules),
+│                       reports.py, ai_bridge.py, copilot_guard.py (Step 4)
 ├── sql/
 │   ├── schema.sql          creates all tables, indexes and RLS
 │   ├── verify_schema.sql   read-only checks
@@ -460,3 +465,45 @@ backend/
 | `GET /admin/ingest/jobs/<JOB_ID>` returns `404` | Unknown id, or the server restarted (job records are in memory) | Check `/admin/ingest/summary` for what is in the database; rerunning a load is safe. |
 | An ingestion job ends with `status: "failed"` | A database write still failed after 4 attempts | Check Supabase is reachable, then run the load again; upserts make a rerun safe. |
 | `/docs` returns `404` | `APP_ENV=production` | Use `APP_ENV=development` locally. |
+
+## 12. Step 4: read APIs (dashboard, incidents, reports, Copilot)
+
+Full request/response details, errors and the frontend page for each route are in
+[../docs/API_CONTRACT.md](../docs/API_CONTRACT.md). Summary:
+
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/dashboard` | any logged-in user |
+| GET | `/incidents`, `/incidents/{id}`, `/incidents/{id}/events` | any logged-in user |
+| PATCH | `/incidents/{id}` | analyst (OPEN / INVESTIGATING / CONTAINED, assign self only); manager and admin (any status, assign anyone) |
+| GET | `/reports`, `/reports/{id}` | any logged-in user |
+| POST | `/incidents/{id}/report` | any logged-in user (background job, `202`) |
+| GET | `/reports/jobs/{job_id}` | the user who started it, manager, admin |
+| POST | `/copilot`, GET `/copilot/welcome` | any logged-in user |
+
+How it works:
+
+- **Current run only.** Every read uses the run with `is_current = true`; none loaded gives `409 "no pipeline run loaded yet"`.
+  Counts and statuses are live from `incidents`; the rest of `/dashboard` comes from the run's `dashboard_snapshots` row.
+- **The AI bridge.** Copilot and report generation run `app/ml_bridge/bridge_cli.py` as a subprocess with `ML_PYTHON`
+  (`python -I`, fixed argv `copilot | welcome | summarize`, no shell, environment built from an empty dict so no `SUPABASE_*`).
+  Input goes in as JSON on stdin (so a question is never on a command line), exactly one JSON line comes back
+  (capped at 2 MB). It imports `backend/ml` read-only and replaces `copilot.load()` with the current run's incidents
+  (live status and analyst) and stored reports from the database. It does not use `backend/ml/output`.
+  Timeouts: Copilot 120 s, report 600 s (`504`). Ollama not running: `503 "AI service unavailable - start Ollama"`.
+  The bridge modes are not pipeline steps and are not in the `ml_adapter` allowlist.
+- **Locks.** Report jobs, Copilot calls and ingestion/pipeline jobs each have their own lock. Copilot is also limited to
+  10 questions per minute per user (`429` + `Retry-After`).
+- **Reports** are stored only when `grounding.grounded` is true (any source, the verified `template` fallback included),
+  and only if the result's `pipeline_run_id` equals the current run's fingerprint.
+- **Audit.** `incident.updated` (before/after status and analyst) and `copilot.ask` (question length, answer source,
+  incident ids; never the question text).
+- **Force reload** (`force=true` into an existing run) keeps the status and analyst of incidents that already exist.
+- **Frontend setup.** `VITE_API_URL` defaults to `http://127.0.0.1:8000`; set
+  `CORS_ORIGINS=http://localhost:8443,http://127.0.0.1:8443` in `backend/.env` (Vite runs on 8443).
+- **Ollama** is not installed by this project. Without it the Copilot welcome message and everything that does not call
+  the model still work; Copilot questions and report generation return `503`.
+
+Tests: `test_dashboard.py`, `test_incidents.py`, `test_reports.py`, `test_copilot_bridge.py` (includes a real
+`bridge_cli.py` subprocess run and a check that it imports without `app`), `test_step4_misc.py` (log level, force reload),
+all with the fake Supabase (`soc_seed.py` seeds one run).
