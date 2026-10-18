@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module: ATTACK-INJECTION TEST (recall without an answer key).
+Vantix - AI/ML module: ATTACK-INJECTION TEST (recall without an answer key).
 
 Plants attacks with KNOWN labels into a COPY of the raw data, reruns the whole pipeline on the copy, and
 measures how many planted attacks end up in an incident (detected) and with the right attack type.

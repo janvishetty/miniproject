@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module: AI Copilot (analyst chat), grounded in the incident data.
+Vantix - AI/ML module: AI Copilot (analyst chat), grounded in the incident data.
 
     answer(question) -> {"answer": markdown, "incidents": [ids used], "source": "llm" | "llm_corrected" | "facts",
                          "grounding": {...}, "attempts": [...], "seconds": float}
@@ -47,7 +47,7 @@ DEMO = [
     "Explain the credential stuffing from Moscow",
 ]
 
-PROMPT = """You are Sentra's SOC copilot for a FinTech security team. Answer the analyst's QUESTION using ONLY the FACTS.
+PROMPT = """You are Vantix's SOC copilot for a FinTech security team. Answer the analyst's QUESTION using ONLY the FACTS.
 Rules:
 - Use only incident IDs, user IDs, IPs, transaction IDs, amounts (Indian rupees, written with the rupee sign), times
   and places that appear in FACTS. If FACTS do not contain the answer, say so in one sentence.
@@ -474,7 +474,7 @@ def premise_notes(question, sel):
     """Facts written by code when the question assumes something false. The LLM answer comes after them."""
     notes = []
     if DONE_Q.search(question):
-        notes.append("Nothing has been locked, blocked or frozen yet: Sentra only detects incidents and recommends "
+        notes.append("Nothing has been locked, blocked or frozen yet: Vantix only detects incidents and recommends "
                      "containment; an analyst carries it out. The recommended actions are listed per incident.")
     if BLOCK_Q.search(question):
         asked = set(re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", question))

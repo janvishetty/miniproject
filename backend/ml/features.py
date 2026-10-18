@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 1: feature engineering.
+Vantix - AI/ML module, step 1: feature engineering.
 
 Turns raw logs into one numeric row per event so the anomaly model can score them.
   - auth_features.csv : one row per LOGIN attempt

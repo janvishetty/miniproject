@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 4: incident reports with a local LLM (Ollama, llama3.2:3b).
+Vantix - AI/ML module, step 4: incident reports with a local LLM (Ollama, llama3.2:3b).
 
 Hallucination control (small models invent details if allowed):
   1. Facts (Five Ws, MITRE technique, evidence) are filled in by Python straight from the data.

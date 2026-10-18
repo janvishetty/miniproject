@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module: analyst review sample (to estimate PRECISION without an answer key).
+Vantix - AI/ML module: analyst review sample (to estimate PRECISION without an answer key).
 
 Draws a random, stratified sample of incidents (same number per attack type) and writes the evidence for each
 into a CSV with an empty `label` column. A human analyst fills `label` with one of:

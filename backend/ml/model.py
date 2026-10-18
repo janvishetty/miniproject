@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 2: anomaly detection + SHAP explanations.
+Vantix - AI/ML module, step 2: anomaly detection + SHAP explanations.
 
 Isolation Forest isolates points with random splits; anomalies get isolated in
 fewer splits (shorter path). SHAP's TreeExplainer tells us which features made

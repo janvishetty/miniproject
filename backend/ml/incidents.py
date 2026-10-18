@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 3: group anomalous events into incidents.
+Vantix - AI/ML module, step 3: group anomalous events into incidents.
 
 Output = backend/ml/output/incidents.json, shaped like the frontend's IncidentsPage `ALL` array
 (id, sev, status, title, asset, ip, analyst, vector, created, confidence, impact) plus extra

@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 6: data for the frontend Dashboard page -> output/dashboard.json
+Vantix - AI/ML module, step 6: data for the frontend Dashboard page -> output/dashboard.json
 
 Shaped like the mock constants in frontend/src/DashboardPage.tsx, so the backend can serve it as-is:
   stats       -> the 4 StatCards (active incidents, critical count, platform risk score, events analysed)

@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module: evaluation WITHOUT ground-truth labels.
+Vantix - AI/ML module: evaluation WITHOUT ground-truth labels.
 
 No answer key exists for this dataset, so we use honest, non-circular checks:
 

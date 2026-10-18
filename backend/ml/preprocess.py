@@ -1,5 +1,5 @@
 """
-Sentra / FSIA - AI/ML module, step 0: data validation + cleaning.
+Vantix - AI/ML module, step 0: data validation + cleaning.
 
 Reads raw CSVs from data/, checks quality, cleans, and writes:
   data/processed/*.csv                      cleaned files (used by features.py)
