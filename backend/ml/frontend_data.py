@@ -77,6 +77,18 @@ def live_events(incidents, out, n=50):
     return sorted(rows, key=lambda x: x["ts"], reverse=True)[:n]
 
 
+def event_funnel(out, incidents):
+    a = pd.read_csv(out / "scored_auth.csv", usecols=["event_id", "is_flagged"])
+    t = pd.read_csv(out / "scored_txn.csv", usecols=["transaction_id", "is_flagged"])
+    flagged = set(a.event_id[a.is_flagged == 1]) | set(t.transaction_id[t.is_flagged == 1])
+    watch = json.loads((out / "watchlist.json").read_text()) if (out / "watchlist.json").exists() else []
+    in_inc = {e for i in incidents for e in i["event_ids"]}
+    in_watch = {e for w in watch for e in w["event_ids"]}
+    pool = in_inc | in_watch
+    return {"flagged_by_model": len(flagged), "flagged_by_rules_only": len(pool - flagged), "grouped": len(pool),
+            "in_incidents": len(in_inc), "in_watchlist": len(in_watch)}
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", default=str(ML / "output"))
@@ -103,7 +115,9 @@ def main():
             "platform_risk_sub": "severity-weighted mean risk of open incidents",
             "events_analysed": auth_n + txn_n,
             "events_analysed_sub": f"{auth_n:,} logins + {txn_n:,} transfers scored by the model",
-            "anomalous_events": sum(i["event_count"] for i in incidents),
+            "anomalous_events": sum(i["event_count"] for i in incidents),     # events inside the incident list
+            # the full funnel: model+guard flags + rule-only events -> grouped -> incidents or watch list
+            "event_funnel": event_funnel(out, incidents),
             "amount_at_risk": round(sum(i["amount_total"] for i in incidents
                                         if i["vector"] == "Account Takeover"), 2),
             "detected_by": dict(Counter(i.get("detected_by", "ml") for i in incidents)),

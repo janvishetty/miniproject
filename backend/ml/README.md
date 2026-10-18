@@ -160,7 +160,7 @@ stuffing from Moscow".
 
 | Page / element (frontend/src) | Replace the mock with | Notes |
 |---|---|---|
-| Dashboard stat cards | `dashboard.json` -> `stats` (`active_incidents`, `critical`, `platform_risk_score`, `events_analysed` + `*_sub` texts) | "Avg Response Time" is analyst workflow data, not ML: keep or drop |
+| Dashboard stat cards (event counts: `stats.event_funnel` = flagged_by_model + flagged_by_rules_only = grouped = in_incidents + in_watchlist) | `dashboard.json` -> `stats` (`active_incidents`, `critical`, `platform_risk_score`, `events_analysed` + `*_sub` texts) | "Avg Response Time" is analyst workflow data, not ML: keep or drop |
 | Dashboard risk map (`RISK_NODES`) | `dashboard.json` -> `risk_map` (`id, tag, score, alerts, risk`) | One node per API endpoint, from `api_logs.csv` |
 | Dashboard live events (`STREAM_POOL`) | `dashboard.json` -> `live_events` (`ts, node, msg, type`) | Newest first, `type` is `alert`/`warn` |
 | Dashboard recent incidents (`RECENT`) | `dashboard.json` -> `recent` (`id, sev, title, time, status`) | |
@@ -240,7 +240,9 @@ event says why in `flag_reason` (`model`, `guard: amount`, `guard: payee`, `guar
 `incidents.py` loads `fsia_cyber/rules.py` + `correlate.py` by file path and runs them on `data/`:
 
 - every rule alert's events are matched to the ML incidents -> `rule_hits`, `detected_by`, Rule Engine timeline rows
-- events a strong rule flagged but the model scored below threshold are added (rules-only catches: 1 today)
+- events a strong rule flagged but the model did not are added (63 events today); since the amount guard, every
+  incident also contains model-flagged events, so all 194 are `ml+rules` (the 1 former rules-only incident is now
+  caught by the model too)
 - `sev` = higher of ML and rule severity; rule-confirmed incidents are never moved to the watch-list
 - low-severity incidents that NO rule confirms go to the watch-list (`unconfirmed: true`): all 9 were false alarms
 - `R_IMPOSSIBLE_TRAVEL_CANDIDATE` and `R_NEW_BENEFICIARY` are context only: they annotate but never create incidents
