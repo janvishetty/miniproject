@@ -6,6 +6,7 @@ import DashboardPage from "./DashboardPage";
 import IncidentsPage from "./IncidentsPage";
 import LLIReportsPage from "./LLIReportsPage";
 import AICopilotPage from "./AICopilotPage";
+import * as api from "./api";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 type Toast = { id: number; msg: string; type: string };
@@ -140,7 +141,9 @@ function EditProfileModal({ user, t, onSave, onClose }: {
 export default function App() {
   const [isDark, setIsDark]           = useState(false);
   const [isAuthenticated, setIsAuth]  = useState(false);
-  const [user, setUser]               = useState<UserProfile>({ name: "", username: "", email: "", position: "Security Analyst" });
+  const [user, setUser]               = useState<UserProfile>({ id: "", name: "", username: "", email: "", position: "Security Analyst", role: "analyst" });
+  const [critical, setCritical]       = useState<number | null>(null);
+  const [healthy, setHealthy]         = useState(false);
   const [tab, setTab]                 = useState<string>("DASHBOARD");
   const [toasts, setToasts]           = useState<Toast[]>([]);
   const [showProfile, setShowProfile] = useState(false);
@@ -157,14 +160,38 @@ export default function App() {
   function handleLogin(u: UserProfile) {
     setUser(u);
     setIsAuth(true);
-    showToast(`Welcome back, ${u.name.split(" ")[0]}!`);
+    showToast(`Welcome back, ${(u.name || u.username || "analyst").split(" ")[0]}!`);
   }
 
-  function handleSignOut() {
+  function resetSession() {
     setIsAuth(false);
     setShowProfile(false);
     setTab("DASHBOARD");
+    setCritical(null);
+    setHealthy(false);
   }
+
+  function handleSignOut() {
+    api.logout();
+    resetSession();
+  }
+
+  // Any 401 from the API (token expired or revoked) lands here.
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => { resetSession(); showToast("Session expired", "error"); });
+    return () => api.setUnauthorizedHandler(null);
+  }, []);
+
+  function refreshCritical() {
+    api.dashboard().then(d => setCritical(d.critical_open)).catch(() => setCritical(null));
+  }
+
+  // Nav badge (critical_open) and the "All systems live" pill (GET /health), refreshed on tab change.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    refreshCritical();
+    api.health().then(() => setHealthy(true)).catch(() => setHealthy(false));
+  }, [isAuthenticated, tab]);
 
   if (!isAuthenticated) {
     return (
@@ -179,7 +206,7 @@ export default function App() {
     );
   }
 
-  const initials = user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials = ((user.name || user.username || "?").split(" ").map(w => w[0]).join("").slice(0, 2)).toUpperCase();
   const pageProps = { t, showToast, isDark };
 
   return (
@@ -213,14 +240,18 @@ export default function App() {
 
         {/* Right side */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.greenDim, border: `1px solid ${t.greenBorder}`, borderRadius: 99, padding: "4px 12px" }}>
-            <div className="live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: t.green }}/>
-            <span style={{ fontSize: 12, color: t.green, fontWeight: 600 }}>All systems live</span>
-          </div>
+          {healthy && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.greenDim, border: `1px solid ${t.greenBorder}`, borderRadius: 99, padding: "4px 12px" }}>
+              <div className="live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: t.green }}/>
+              <span style={{ fontSize: 12, color: t.green, fontWeight: 600 }}>All systems live</span>
+            </div>
+          )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 99, padding: "4px 12px", cursor: "pointer" }} onClick={() => setTab("INCIDENTS")}>
-            <span style={{ fontSize: 12, color: t.red, fontWeight: 700 }}>2 critical</span>
-          </div>
+          {critical !== null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 99, padding: "4px 12px", cursor: "pointer" }} onClick={() => setTab("INCIDENTS")}>
+              <span style={{ fontSize: 12, color: t.red, fontWeight: 700 }}>{critical} critical</span>
+            </div>
+          )}
 
           {/* Avatar — profile trigger */}
           <div ref={avatarRef} style={{ position: "relative" as const }}>
@@ -246,7 +277,7 @@ export default function App() {
       {/* ── Page content ── */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {tab === "DASHBOARD"   && <DashboardPage  {...pageProps} onNavigate={setTab}/>}
-        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps}/>}
+        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps} onChanged={refreshCritical}/>}
         {tab === "LLI REPORTS" && <LLIReportsPage {...pageProps}/>}
         {tab === "AI COPILOT"  && <AICopilotPage  {...pageProps}/>}
       </div>
