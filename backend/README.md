@@ -10,7 +10,7 @@ This document covers only what exists in the code today.
 |------|-------|--------|
 | 1 | Foundation and auth: config, Supabase clients, error format, logging, security headers, rate limiting, register / login / me / logout, roles, audit log, database schema | **Done** |
 | 2 | CSV ingestion (`data/` → `raw_events`, `events`, reference tables): admin-only routes, dry run, background jobs, audit summary | **Done** |
-| 3 | ML pipeline integration (`backend/ml/output/` → `pipeline_runs`, `ml_results`, `incidents`, `incident_events`, `rule_alerts`, `reports`, `dashboard_snapshots`): admin-only run / load routes. Code and tests are done; the first real load is pending (needs migration 004) | **Built, not yet loaded** |
+| 3 | ML pipeline integration (`backend/ml/output/` → `pipeline_runs`, `ml_results`, `incidents`, `incident_events`, `rule_alerts`, `reports`, `dashboard_snapshots`): admin-only run / load routes. Verified on real data on 18 Oct 2026 (see **Step 3 verified results**) | **Done** |
 | 4 | Dashboard, report and Copilot APIs | Planned |
 | 5 | Hardening and deployment (pinned versions, trusted proxy headers, production config) | Planned |
 
@@ -294,6 +294,70 @@ Replace every `<PLACEHOLDER>`. Use the admin token from the data-loading steps a
 
    Poll the job as above until `status` is `completed`. Use `POST /admin/pipeline/run` instead if the files need to be regenerated first.
 3. **Check the run:** `GET /admin/pipeline/runs` (the newest run should be `completed` with `is_current: true`).
+
+### How to load (what I actually did)
+
+This is the sequence used for the first real load on 18 Oct 2026. Replace `<REPO>` and `<PLACEHOLDER>`; never put real credentials or tokens in this file.
+
+1. **Run Janvi's scripts by hand**, from the repo root, with the repo-root virtual environment (`<REPO>/.venv`). Ollama is not needed for these five:
+
+   ```bash
+   cd <REPO>
+   .venv/bin/python3 backend/ml/preprocess.py
+   .venv/bin/python3 backend/ml/features.py
+   .venv/bin/python3 backend/ml/model.py
+   .venv/bin/python3 backend/ml/incidents.py
+   .venv/bin/python3 backend/ml/frontend_data.py
+   ```
+
+   (`summarize.py`, which writes `reports.json`, needs Ollama and was not run.)
+2. **Dry run of the load** (no database writes), then poll the job until `status` is `completed`:
+
+   ```bash
+   curl -s -X POST "http://127.0.0.1:8000/admin/pipeline/load-existing?dry_run=true" -H "Authorization: Bearer $TOKEN"
+   curl -s http://127.0.0.1:8000/admin/pipeline/jobs/<JOB_ID> -H "Authorization: Bearer $TOKEN"
+   ```
+3. **The real load**, same pattern without `dry_run`:
+
+   ```bash
+   curl -s -X POST "http://127.0.0.1:8000/admin/pipeline/load-existing" -H "Authorization: Bearer $TOKEN"
+   curl -s http://127.0.0.1:8000/admin/pipeline/jobs/<JOB_ID> -H "Authorization: Bearer $TOKEN"
+   ```
+4. **Check the result** in **Supabase → SQL Editor** (read-only; counts for the current run):
+
+   ```sql
+   select id, status, is_current, source_fingerprint, events_scored, incident_count
+   from public.pipeline_runs where is_current;
+
+   with cur as (select id from public.pipeline_runs where is_current),
+        inc as (select id from public.incidents where pipeline_run_id in (select id from cur))
+   select 'ml_results' as tbl, count(*) from public.ml_results where pipeline_run_id in (select id from cur)
+   union all select 'ml_results flagged', count(*) from public.ml_results
+             where is_anomalous and pipeline_run_id in (select id from cur)
+   union all select 'incidents', count(*) from inc
+   union all select 'incident_events', count(*) from public.incident_events where incident_id in (select id from inc)
+   union all select 'reports', count(*) from public.reports where incident_id in (select id from inc)
+   union all select 'dashboard_snapshots', count(*) from public.dashboard_snapshots where pipeline_run_id in (select id from cur)
+   union all select 'rule_alerts (global)', count(*) from public.rule_alerts;
+   ```
+
+### Step 3 verified results
+
+Measured on the real data on 18 Oct 2026 (nothing here is an estimate):
+
+| Item | Result |
+|------|--------|
+| Pipeline run by hand | 39.6 s (5 scripts; Ollama not needed) |
+| `load-existing` | 42.3 s, 27,878 rows written, 0 rejected |
+| `pipeline_runs` | 1 (`completed`, `is_current`, fingerprint `0087b9cf856d`) |
+| `ml_results` | 24,554 (1,072 `is_flagged` = 952 logins + 120 transfers) |
+| `incidents` | 194 (34 critical / 41 high / 119 medium / 0 low), all `detected_by` = `ml+rules` |
+| `incident_events` | 1,061 |
+| `rule_alerts` | 2,067 |
+| `dashboard_snapshots` | 1 |
+| `reports` | 0 (Ollama has not been run yet, so there is no `reports.json`) |
+| Second `load-existing` | `already_loaded`, nothing written |
+| Migrations | 002 and 004 applied in Supabase |
 
 ### Cleaning up failed runs (you run this, not the API)
 
