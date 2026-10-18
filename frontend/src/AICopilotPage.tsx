@@ -22,10 +22,20 @@ function renderText(text: string, t: Theme) {
       return <div key={i} style={{ fontWeight: 700, color: t.text, fontSize: 14, marginTop: i > 0 ? 14 : 0, marginBottom: 4 }}>{line.replace(/\*\*/g, "")}</div>;
     }
     if (line === "") return <div key={i} style={{ height: 6 }}/>;
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
+    if (bullet) {
+      return (
+        <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: t.textSub, lineHeight: 1.7, paddingLeft: 4 }}>
+          <span style={{ color: t.blue, flexShrink: 0 }}>•</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            {bullet[1].split(/\*\*(.*?)\*\*/g).map((p, j) => j % 2 === 1 ? <strong key={j} style={{ color: t.text, fontWeight: 600 }}>{p}</strong> : p)}
+          </span>
+        </div>
+      );
+    }
     const parts = line.split(/\*\*(.*?)\*\*/g);
-    const base = line.startsWith("1.") || line.startsWith("2.") || line.startsWith("3.") || line.startsWith("4.") || line.startsWith("5.");
     return (
-      <div key={i} style={{ fontSize: 13, color: t.textSub, lineHeight: 1.7, paddingLeft: base ? 0 : line.startsWith("- ") || line.startsWith("*") ? 0 : 0 }}>
+      <div key={i} style={{ fontSize: 13, color: t.textSub, lineHeight: 1.7 }}>
         {parts.map((p, j) => j % 2 === 1 ? <strong key={j} style={{ color: t.text, fontWeight: 600 }}>{p}</strong> : p)}
       </div>
     );
@@ -113,7 +123,7 @@ export default function AICopilotPage({ t }: Props) {
               <div style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>● Online</div>
             </div>
           </div>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: t.textSub, lineHeight: 1.5 }}>Ask me anything about incidents, compliance, or threat analysis. I'll explain my reasoning.</p>
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: t.textSub, lineHeight: 1.5 }}>Ask me about incidents, users, IPs, transactions and attack types. I'll explain my reasoning.</p>
         </div>
 
         {/* Suggested prompts */}
@@ -132,7 +142,7 @@ export default function AICopilotPage({ t }: Props) {
 
         {/* Model info */}
         <div style={{ padding: "12px 16px", borderTop: `1px solid ${t.border}`, background: t.bg }}>
-          {[["Model", "finbert-vantix-v2.1"], ["Method", "Rule + ML hybrid"], ["Audit log", "Enabled"]].map(([k, v]) => (
+          {[["Model", "Isolation Forest + SHAP · llama3.2:3b (local)"], ["Method", "Rule + ML hybrid"], ["Audit log", "Enabled"]].map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
               <span style={{ fontSize: 11, color: t.textMuted }}>{k}</span>
               <span style={{ fontSize: 11, color: t.textSub, fontWeight: 500 }}>{v}</span>
@@ -154,7 +164,7 @@ export default function AICopilotPage({ t }: Props) {
               <div style={{ maxWidth: "70%", background: msg.role === "user" ? t.blue : t.card, border: `1px solid ${msg.role === "user" ? t.blue : t.border}`, borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "4px 14px 14px 14px", padding: "12px 16px", boxShadow: t.shadow }}>
                 {msg.thinking ? (
                   <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "2px 0" }}>
-                    {[0,1,2].map(j => <div key={j} style={{ width: 7, height: 7, borderRadius: "50%", background: t.blue, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }}/>)}
+                    {[0,1,2].map(j => <div key={j} style={{ width: 7, height: 7, borderRadius: "50%", background: t.blue, animation: `bounce 1.2s ease-in-out ${j*0.15}s infinite` }}/>)}
                     <span style={{ fontSize: 12, color: t.textMuted, marginLeft: 4 }}>Analyzing…</span>
                   </div>
                 ) : (
@@ -200,7 +210,7 @@ export default function AICopilotPage({ t }: Props) {
             </button>
           </div>
           <div style={{ fontSize: 11, color: t.textMuted, marginTop: 7, textAlign: "center" as const }}>
-            Enter to send · Shift+Enter for new line · All queries audit-logged for SR 11-7 compliance
+            Enter to send · Shift+Enter for new line · Queries are audit-logged (no question text stored)
           </div>
         </div>
       </div>
