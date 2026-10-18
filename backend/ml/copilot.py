@@ -109,9 +109,13 @@ def readability_problems(text):
     return p
 
 
+def by_risk(incidents):
+    """Highest risk first, whatever order the caller supplies (the file, or a backend's database rows)."""
+    return sorted(incidents, key=lambda i: (-float(i.get("risk_score") or 0), str(i.get("start") or "")))
+
+
 def load():
     inc = json.loads((OUT / "incidents.json").read_text())
-    inc.sort(key=lambda i: (-i["risk_score"], i["start"]))      # never rely on the file's order
     rp = OUT / "reports.json"
     reports = {r["id"]: r for r in json.loads(rp.read_text())} if rp.exists() else {}
     return inc, reports
@@ -418,6 +422,7 @@ def welcome():
     """Opening message for the Copilot page (replaces the mock ANSWERS.default). Built by code from the data, so
     it is instant, needs no Ollama and is always correct. Uses the page's renderText format (**bold** lines)."""
     incidents, _ = load()
+    incidents = by_risk(incidents)
     sev = Counter(i["sev"] for i in incidents)
     vec = Counter(i["vector"] for i in incidents)
     crit = [i for i in incidents if i["sev"] == "critical"][:3]
@@ -524,6 +529,7 @@ def premise_notes(question, sel):
 def answer(question, max_attempts=3):
     t0 = time.time()
     incidents, reports = load()
+    incidents = by_risk(incidents)
     sel, why, with_stats = retrieve(question, incidents)
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
     ranked = next((w.split("ranked by ")[1] for w in why if w.startswith("ranked by")), None)
