@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]   # .../backend
@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     DATA_DIR: Path = REPO_ROOT / "data"
     ML_OUTPUT_DIR: Path = REPO_ROOT / "backend" / "ml" / "output"
     ML_PYTHON: str = "python3"
+    ML_STEP_TIMEOUT_SECONDS: int = Field(default=600, ge=10, le=3600)
 
     @field_validator("SUPABASE_URL")
     @classmethod

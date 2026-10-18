@@ -1,0 +1,4 @@
+event_id,rule_id,rule_name,severity,timestamp
+E900001,R_BRUTE_FORCE,Brute force,critical,2026-09-01 00:00:01
+E900002,R_TI_MATCH,Threat intel match,high,2026-09-01 00:00:02
+E900003,R_IMPOSSIBLE_TRAVEL_CANDIDATE,Impossible travel candidate,medium,2026-09-01 00:00:03

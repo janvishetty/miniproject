@@ -1,0 +1,4 @@
+event_id,timestamp,user_id,ip_address,device_id,event_type,status,location,mfa_status,is_new_device,ip_not_usual,location_mismatch,ip_threat_score,hour,is_night,is_failed,mfa_not_prompted,failed_logins_user_1h,failed_logins_ip_1h,distinct_users_ip_24h,anomaly_score,is_anomaly,is_flagged,top_reasons,flag_reason
+E900001,2026-09-01 00:00:01,U9001,10.0.0.1,D9001,login,success,Testville,passed,0,0,0,0,0,1,0,0,0,0,1,91.5,0,1,"[{""feature"": ""ip_threat_score"", ""impact"": 0.5, ""text"": ""IP on threat list (High)""}]",model
+E900002,2026-09-01 00:00:02,U9001,10.0.0.2,D9001,login,success,Testville,passed,0,0,0,0,0,1,0,0,0,0,1,12.0,1,0,"[{""feature"": ""ip_threat_score"", ""impact"": 0.5, ""text"": ""IP on threat list (High)""}]",
+E900003,2026-09-01 00:00:03,U9001,10.0.0.3,D9001,login,success,Testville,passed,0,0,0,0,0,1,0,0,0,0,1,75.25,0,1,"[{""feature"": ""ip_threat_score"", ""impact"": 0.5, ""text"": ""IP on threat list (High)""}]",model

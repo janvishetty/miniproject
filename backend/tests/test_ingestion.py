@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.routers import ingest as ingest_router
+from app import jobs
 from app.services import ingestion, normalize
 
 FIXTURES = Path(__file__).parent / "fixtures" / "data"
@@ -15,15 +15,6 @@ def _use_fixture_data_dir(monkeypatch):
     """Ingestion routes/services must never read the real data/ folder in tests."""
     monkeypatch.setattr(ingestion, "get_settings", lambda: SimpleNamespace(DATA_DIR=FIXTURES))
     yield
-
-
-@pytest.fixture(autouse=True)
-def _reset_job_state():
-    ingest_router._jobs.clear()
-    ingest_router._active_job_id = None
-    yield
-    ingest_router._jobs.clear()
-    ingest_router._active_job_id = None
 
 
 def _admin_token(client, fake, valid_body):
@@ -133,9 +124,9 @@ def test_second_job_returns_409_while_one_is_running(client, fake, valid_body):
 
     # Simulate a job already in flight (background tasks finish before TestClient
     # returns, so this models the state a real concurrent request would see).
-    ingest_router._jobs["job-in-flight"] = ingest_router.JobRecord(
+    jobs._jobs["job-in-flight"] = jobs.JobRecord(
         id="job-in-flight", kind="all", params={}, actor_id="someone")
-    ingest_router._active_job_id = "job-in-flight"
+    jobs._active_job_id = "job-in-flight"
 
     r = client.post("/admin/ingest/reference?dry_run=true", headers=h)
     assert r.status_code == 409

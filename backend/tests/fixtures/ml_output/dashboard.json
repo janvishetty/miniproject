@@ -1,0 +1,35 @@
+{
+ "stats": {
+  "active_incidents": 1,
+  "critical": 1,
+  "high": 0,
+  "events_analysed": 5,
+  "anomalous_events": 3,
+  "event_funnel": {
+   "flagged_by_model": 4,
+   "flagged_by_rules_only": 0,
+   "grouped": 4,
+   "in_incidents": 3,
+   "in_watchlist": 1
+  },
+  "detected_by": {
+   "ml+rules": 1
+  }
+ },
+ "risk_map": [],
+ "live_events": [],
+ "recent": [],
+ "by_type": {
+  "Account Takeover": 1
+ },
+ "by_severity": {
+  "critical": 1,
+  "high": 0,
+  "medium": 0,
+  "low": 0
+ },
+ "pipeline_run_id": "abc123def456",
+ "model": {
+  "detector": "synthetic"
+ }
+}

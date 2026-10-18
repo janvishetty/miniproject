@@ -1,0 +1,68 @@
+[
+ {
+  "id": "INC-2026-9001",
+  "title": "Synthetic Account Takeover",
+  "sev": "critical",
+  "vector": "Account Takeover",
+  "confidence": 100,
+  "impact": 90,
+  "summary": "Synthetic report summary.",
+  "five_ws": {
+   "who": "U9001",
+   "what": "x",
+   "when": "y",
+   "where": "z",
+   "why_flagged": "w"
+  },
+  "mitre": [
+   "T1110 Brute Force"
+  ],
+  "containment_actions": [
+   "Lock the account"
+  ],
+  "investigation_steps": [
+   "Check logs"
+  ],
+  "source": "llm",
+  "grounding": {
+   "grounded": true,
+   "unverified": []
+  },
+  "detected_by": "ml+rules",
+  "rule_hits": [],
+  "pipeline_run_id": "abc123def456"
+ },
+ {
+  "id": "INC-2026-9002",
+  "title": "Synthetic Account Takeover",
+  "sev": "critical",
+  "vector": "Account Takeover",
+  "confidence": 100,
+  "impact": 90,
+  "summary": "Synthetic report summary.",
+  "five_ws": {
+   "who": "U9001",
+   "what": "x",
+   "when": "y",
+   "where": "z",
+   "why_flagged": "w"
+  },
+  "mitre": [
+   "T1110 Brute Force"
+  ],
+  "containment_actions": [
+   "Lock the account"
+  ],
+  "investigation_steps": [
+   "Check logs"
+  ],
+  "source": "llm",
+  "grounding": {
+   "grounded": true,
+   "unverified": []
+  },
+  "detected_by": "ml+rules",
+  "rule_hits": [],
+  "pipeline_run_id": "000000000000"
+ }
+]

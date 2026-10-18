@@ -1,0 +1,7 @@
+{
+ "pipeline_run_id": "abc123def456",
+ "created_at": "2026-10-18T09:11:13",
+ "incidents": 1,
+ "watchlist": 1,
+ "rules_used": true
+}
