@@ -1,86 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import type { Theme } from "./theme";
-import { Card, Btn, Icons } from "./ui";
+import { Btn, Icons } from "./ui";
+import * as api from "./api";
 
-type Msg = { role: "user" | "ai"; text: string; ts: string; thinking?: boolean };
+type Retry = { welcome: true } | { question: string };
+type Msg = { id: number; role: "user" | "ai"; text: string; ts: string; thinking?: boolean; retry?: Retry };
 
 const CHIPS = [
-  "Summarize today's critical incidents",
-  "What caused INC-2026-8848?",
-  "Generate a PCI-DSS remediation plan",
-  "Explain the SWIFT gateway risk score",
-  "What is the FIN-APT-7 attack pattern?",
-  "Draft a regulatory disclosure report",
+  "Summarize the critical incidents",
+  "What caused INC-2026-0081?",
+  "Which incidents are account takeover?",
+  "What containment steps do you recommend for INC-2026-0081?",
+  "Show the highest-risk incidents",
 ];
 
-const ANSWERS: Record<string, string> = {
-  default: `**Security Posture Summary — Today**
-
-Here's what's happening across your FinTech platform right now:
-
-**🔴 Critical:** INC-2026-8848 requires immediate action. An attacker (185.226.101.5) is sweeping SWIFT transaction IDs using an unauthenticated API endpoint. Match confidence: 94% for FIN-APT-7 tactic.
-
-**🟡 Elevated:** Platform risk index is at 67/100. The SWIFT gateway node is the primary contributor (+12 points).
-
-**🟢 Good news:** GDPR compliance is at 100%. PCI-DSS is at 91%. Mean response time is 4m 12s — within your 5-minute target.
-
-**Recommended next step:** Investigate and contain INC-2026-8848 first. I've pre-loaded the evidence files and timeline in the Incidents tab.
-
-*This analysis was produced by finbert-vantix-v2.1 using rule-based correlation + ML anomaly scoring. All outputs are audit-logged.*`,
-
-  "Summarize today's critical incidents": `**Today's Critical Incidents (2 found)**
-
-**INC-2026-8848 — CRITICAL · Still Open**
-High-velocity SWIFT transaction sweep. Attacker IP 185.226.101.5 has sent 42,000+ requests/min. SLA expires in 4 seconds. Action: Block IP at WAF immediately.
-
-**INC-2026-8838 — CRITICAL · Resolved ✓**
-Brute-force on Treasury Ledger admin portal from 91.108.4.77. Blocked after 1,847 attempts. Analyst K. Brennan resolved at 10:44. No data exfiltration detected.
-
-**Your MTTR for resolved incidents today: 4m 12s** (target: under 5 min ✓)`,
-
-  "What caused INC-2026-8848?": `**Root Cause — INC-2026-8848**
-
-**Attack Chain (step by step):**
-1. Attacker scanned SWIFT gateway at 12:03:55 UTC
-2. Found unauthenticated \`/v2/transfers\` endpoint
-3. Sent 42,000 requests/min — 300× normal traffic
-4. ML anomaly model scored it 0.97 (critical threshold: 0.90)
-5. Correlation rule R-104 auto-created this incident
-
-**Why it happened:**
-- Patch SWIFT-SEC-2026-041 was not yet applied
-- WAF update was delayed during maintenance window
-- No geographic IP restriction was set on the SWIFT API
-
-**Fix it in 3 steps:**
-1. Block 185.226.0.0/16 at the WAF right now
-2. Apply the pending SWIFT security patch (NODE-SWIFT-01)
-3. Set rate limit: max 200 requests/min per token`,
-
-  "Generate a PCI-DSS remediation plan": `**PCI-DSS Remediation Plan — 2 Open Findings**
-
-**Finding F-001 · Control 8.3.6 · Risk: HIGH**
-*Problem:* MFA not enforced on 2 legacy admin consoles.
-*Fix:* Deploy TOTP via Okta to admin-console-legacy-01 and -02. Estimated time: 4 hours.
-*Due:* September 1, 2026 · Owner: Infra Team
-
-**Finding F-003 · SWIFT CSP 2.2 · Risk: HIGH**
-*Problem:* Mandatory security update pending on SWIFT gateway.
-*Fix:* Schedule maintenance window Aug 24, 02:00–04:00 UTC. Apply patch SWIFT-SEC-2026-041. Run CSP verification suite after.
-*Due:* August 28, 2026 · Owner: NetOps
-
-**Total effort: ~6 hours** · Compliance deadline: Sep 1 · Risk if missed: QSA escalation`,
-};
-
-function typeText(text: string, onChunk: (t: string) => void, onDone: () => void) {
-  let i = 0;
-  const iv = setInterval(() => {
-    if (i >= text.length) { clearInterval(iv); onDone(); return; }
-    i = Math.min(text.length, i + Math.floor(Math.random() * 8) + 4);
-    onChunk(text.slice(0, i));
-  }, 20);
-  return () => clearInterval(iv);
-}
+function now() { return new Date().toTimeString().slice(0, 8); }
 
 function renderText(text: string, t: Theme) {
   return text.split("\n").map((line, i) => {
@@ -101,31 +35,69 @@ function renderText(text: string, t: Theme) {
 interface Props { t: Theme; }
 
 export default function AICopilotPage({ t }: Props) {
-  const [msgs, setMsgs] = useState<Msg[]>([{ role: "ai", text: ANSWERS.default, ts: "12:09:01" }]);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(1);
+  const welcomed = useRef(false);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
-  function send(text: string) {
-    if (!text.trim() || busy) return;
-    const ts = new Date().toTimeString().slice(0, 8);
-    setMsgs(prev => [...prev, { role: "user", text, ts }]);
-    setInput("");
-    setBusy(true);
+  function update(id: number, patch: Partial<Msg>) {
+    setMsgs(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
+  }
 
-    const reply = ANSWERS[text] || ANSWERS.default;
-    setTimeout(() => {
-      setMsgs(prev => [...prev, { role: "ai", text: "", ts, thinking: true }]);
-      setTimeout(() => {
-        setMsgs(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, thinking: false } : m));
-        typeText(reply,
-          chunk => setMsgs(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, text: chunk } : m)),
-          () => setBusy(false)
-        );
-      }, 700);
-    }, 200);
+  // Turns an API failure into the text (and Retry button) shown in the chat bubble.
+  function failure(err: unknown, retry: Retry): Partial<Msg> {
+    const e = err instanceof api.ApiError ? err : null;
+    if (e?.status === 503) return { thinking: false, text: "AI service unavailable. Start Ollama.", retry };
+    if (e?.status === 429) return { thinking: false, text: e.message };
+    if (e && (e.status === 0 || e.status === 504)) return { thinking: false, text: e.message, retry };
+    return { thinking: false, text: e ? e.message : "Something went wrong. Try again." };
+  }
+
+  function loadWelcome(id: number) {
+    update(id, { thinking: true, text: "", retry: undefined });
+    api.welcome()
+      .then(res => update(id, { thinking: false, text: res.answer ?? "", ts: now() }))
+      .catch(err => update(id, failure(err, { welcome: true })));
+  }
+
+  // Opening message: GET /copilot/welcome (built from the data; no Ollama needed).
+  useEffect(() => {
+    if (welcomed.current) return;
+    welcomed.current = true;
+    const id = nextId.current++;
+    setMsgs([{ id, role: "ai", text: "", ts: now(), thinking: true }]);
+    loadWelcome(id);
+  }, []);
+
+  function ask(question: string, aiId: number) {
+    setBusy(true);
+    api.copilot(question)
+      .then(res => update(aiId, { thinking: false, text: res.answer ?? "", retry: undefined, ts: now() }))
+      .catch(err => update(aiId, failure(err, { question })))
+      .finally(() => setBusy(false));
+  }
+
+  function send(text: string) {
+    const question = text.trim();
+    if (!question || busy) return;
+    const aiId = nextId.current + 1;
+    setMsgs(prev => [...prev,
+      { id: nextId.current, role: "user", text: question, ts: now() },
+      { id: aiId, role: "ai", text: "", ts: now(), thinking: true }]);
+    nextId.current += 2;
+    setInput("");
+    ask(question, aiId);
+  }
+
+  function retry(msg: Msg) {
+    if (!msg.retry || busy) return;
+    if ("welcome" in msg.retry) { loadWelcome(msg.id); return; }
+    update(msg.id, { thinking: true, text: "", retry: undefined });
+    ask(msg.retry.question, msg.id);
   }
 
   return (
@@ -134,7 +106,7 @@ export default function AICopilotPage({ t }: Props) {
       {/* Sidebar */}
       <div style={{ width: 260, borderRight: `1px solid ${t.border}`, background: t.card, display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "20px 18px", borderBottom: `1px solid ${t.border}` }}>
-          <div style={{ display: "flex", align: "center", gap: 10, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: t.blueDim, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue, flexShrink: 0 }}>{Icons.bot}</div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>AI Copilot</div>
@@ -175,7 +147,7 @@ export default function AICopilotPage({ t }: Props) {
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
           {msgs.map((msg, i) => (
-            <div key={i} className={i === msgs.length - 1 ? "animate-slideIn" : ""} style={{ display: "flex", gap: 12, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+            <div key={msg.id} className={i === msgs.length - 1 ? "animate-slideIn" : ""} style={{ display: "flex", gap: 12, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
               {msg.role === "ai" && (
                 <div style={{ width: 32, height: 32, borderRadius: 9, background: t.blueDim, border: `1px solid ${t.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue, flexShrink: 0, marginTop: 2 }}>{Icons.bot}</div>
               )}
@@ -191,6 +163,11 @@ export default function AICopilotPage({ t }: Props) {
                       {msg.role === "user"
                         ? <span style={{ fontSize: 13, lineHeight: 1.5 }}>{msg.text}</span>
                         : renderText(msg.text, t)}
+                      {msg.retry && (
+                        <div style={{ marginTop: 10 }}>
+                          <Btn t={t} variant="ghost" size="sm" disabled={busy} onClick={() => retry(msg)}>Retry</Btn>
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: 10, color: msg.role === "user" ? "rgba(255,255,255,0.6)" : t.textMuted, marginTop: 6, textAlign: "right" as const }}>{msg.ts}</div>
                   </>
@@ -210,6 +187,7 @@ export default function AICopilotPage({ t }: Props) {
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
               placeholder="Ask the AI Copilot anything about your security environment…"
               rows={1}
+              maxLength={500}
               style={{ flex: 1, background: "none", border: "none", outline: "none", resize: "none", fontSize: 13, color: t.text, lineHeight: 1.5, maxHeight: 120, overflowY: "auto" }}
             />
             <button

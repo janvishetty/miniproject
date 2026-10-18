@@ -1,22 +1,15 @@
 import { useState } from "react";
 import type { Theme } from "./theme";
 import { Icons } from "./ui";
-
-const POSITIONS = [
-  "Security Analyst",
-  "Senior Analyst",
-  "SOC Manager",
-  "Threat Intelligence Lead",
-  "Compliance Officer",
-  "Platform Engineer",
-  "CISO / CTO",
-];
+import * as api from "./api";
 
 export type UserProfile = {
+  id: string;
   name: string;
   username: string;
   email: string;
   position: string;
+  role: string;
 };
 
 interface Props {
@@ -27,43 +20,44 @@ interface Props {
 }
 
 export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
-  const [form, setForm] = useState({ name: "", username: "", email: "", password: "", position: "Security Analyst" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!form.name.trim())     e.name     = "Name is required";
-    if (!form.username.trim()) e.username = "Username is required";
     if (!form.email.includes("@")) e.email = "Enter a valid email";
-    if (form.password.length < 6)  e.password = "Password must be at least 6 characters";
+    if (form.password.length < 8)  e.password = "Password must be at least 8 characters";
     return e;
   }
 
-  function handleSubmit(ev: React.FormEvent) {
+  async function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
-    onLogin({ name: form.name, username: form.username, email: form.email, position: form.position });
+    setBusy(true);
+    try {
+      const p = await api.login(form.email.trim(), form.password);
+      onLogin({ id: p.id, name: p.name ?? "", username: p.username ?? "", email: p.email ?? form.email.trim(),
+                position: p.position ?? "", role: p.role });
+    } catch (err) {
+      const apiErr = err instanceof api.ApiError ? err : null;
+      setErrors({ form: apiErr?.status === 429 ? "Too many attempts, wait a minute"
+                      : apiErr ? apiErr.message : "Something went wrong. Try again." });
+      setBusy(false);
+    }
   }
 
   const field = (key: keyof typeof form, label: string, type = "text", placeholder = "") => (
     <div style={{ display: "flex", flexDirection: "column" as const, gap: 5 }}>
       <label style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{label}</label>
-      {key === "position" ? (
-        <select
-          value={form.position}
-          onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
-          style={{ padding: "9px 12px", borderRadius: t.radiusSm, border: `1px solid ${errors[key] ? t.red : t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit" }}
-        >
-          {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-      ) : (
+      {(
         <div style={{ position: "relative" as const }}>
           <input
             type={key === "password" && !showPassword ? "password" : "text"}
             value={form[key]}
-            onChange={e => { setForm(f => ({ ...f, [key]: e.target.value })); setErrors(er => ({ ...er, [key]: "" })); }}
+            onChange={e => { setForm(f => ({ ...f, [key]: e.target.value })); setErrors(er => ({ ...er, [key]: "", form: "" })); }}
             placeholder={placeholder}
             style={{ width: "100%", padding: "9px 12px", paddingRight: key === "password" ? 40 : 12, borderRadius: t.radiusSm, border: `1px solid ${errors[key] ? t.red : t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const }}
           />
@@ -106,25 +100,24 @@ export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
 
           <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radiusLg, padding: "28px 28px", boxShadow: t.shadowMd }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column" as const, gap: 16 }}>
-              {field("name",     "Full Name",  "text", "e.g. Kim Brennan")}
-              {field("username", "Username",   "text", "e.g. kbrennan")}
               {field("email",    "Email",      "email","e.g. k.brennan@vantix.io")}
-              {field("password", "Password",   "password", "Min. 6 characters")}
-              {field("position", "Position")}
+              {field("password", "Password",   "password", "Min. 8 characters")}
+              {errors.form && <span style={{ fontSize: 11, color: t.red }}>{errors.form}</span>}
 
               <button
                 type="submit"
-                style={{ marginTop: 8, width: "100%", padding: "11px 0", background: "#2563eb", color: "#fff", border: "none", borderRadius: t.radiusSm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s" }}
+                disabled={busy}
+                style={{ opacity: busy ? 0.7 : 1, marginTop: 8, width: "100%", padding: "11px 0", background: "#2563eb", color: "#fff", border: "none", borderRadius: t.radiusSm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#1d4ed8")}
                 onMouseLeave={e => (e.currentTarget.style.background = "#2563eb")}
               >
-                Sign In
+                {busy ? "Signing in..." : "Sign In"}
               </button>
             </form>
           </div>
 
           <p style={{ textAlign: "center" as const, marginTop: 16, fontSize: 12, color: t.textMuted }}>
-            Demo: fill any values (password ≥ 6 chars) to enter
+            Accounts are created by an administrator for now
           </p>
         </div>
       </div>

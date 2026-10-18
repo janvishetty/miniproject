@@ -1,15 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import * as api from "./api";
 import type { Theme } from "./theme";
 import { Card, SectionHead, Btn, ProgressBar, Icons } from "./ui";
-
-const REPORTS = [
-  { id: "RPT-0841", title: "PCI-DSS v4.0 Monthly Compliance Summary",   standard: "PCI-DSS",   status: "ready",      period: "Jul 2026",  findings: 2, critical: 0, size: "3.2 MB", score: 91 },
-  { id: "RPT-0840", title: "SOX IT General Controls Audit Report",       standard: "SOX",       status: "ready",      period: "Q2 2026",   findings: 5, critical: 1, size: "5.1 MB", score: 74 },
-  { id: "RPT-0839", title: "GDPR Data Processing Activity Report",       standard: "GDPR",      status: "ready",      period: "Aug 2026",  findings: 0, critical: 0, size: "1.8 MB", score: 100 },
-  { id: "RPT-0838", title: "FCA Incident Disclosure — INC-8838",         standard: "FCA",       status: "generating", period: "2026-08-21",findings: 3, critical: 2, size: "—",      score: 0  },
-  { id: "RPT-0837", title: "SWIFT CSP Controls Self-Assessment",         standard: "SWIFT-CSP", status: "ready",      period: "H1 2026",   findings: 1, critical: 0, size: "4.4 MB", score: 88 },
-  { id: "RPT-0835", title: "Threat Intelligence Digest — August 2026",   standard: "Internal",  status: "ready",      period: "Aug 2026",  findings: 8, critical: 3, size: "912 KB", score: 62 },
-];
 
 const STANDARDS = [
   { id: "pci", label: "PCI-DSS", desc: "Payment Card Industry Data Security Standard", color: "#2563eb", score: 91 },
@@ -18,20 +10,32 @@ const STANDARDS = [
   { id: "fca", label: "FCA",     desc: "Financial Conduct Authority SYSC",             color: "#d97706", score: 67 },
 ];
 
-function statusStyle(s: string, t: Theme) {
-  if (s === "ready")      return { bg: t.greenDim,  color: t.green,  border: t.greenBorder, label: "Ready"      };
-  if (s === "generating") return { bg: t.amberDim,  color: t.amber,  border: t.amberBorder, label: "Generating…"};
-  return                         { bg: t.badge,      color: t.textSub,border: t.border,       label: "Pending"    };
-}
-
 interface Props { t: Theme; showToast: (msg: string, type?: string) => void; }
 
 export default function LLIReportsPage({ t, showToast }: Props) {
   const [tab, setTab] = useState<"reports"|"compliance"|"generate">("reports");
-  const [filterStd, setFilterStd] = useState("All");
   const [genForm, setGenForm] = useState({ standard: "PCI-DSS", period: "Last 30 Days", scope: "Full Platform" });
+  const [reports, setReports] = useState<api.Report[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
-  const filtered = REPORTS.filter(r => filterStd === "All" || r.standard === filterStd);
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError("");
+    api.listReports(page, 20)
+      .then(res => { if (alive) { setReports(res.items); setTotal(res.total); setLoading(false); } })
+      .catch(err => { if (alive) { setError(err instanceof api.ApiError ? err.message : "Could not load reports"); setLoading(false); } });
+    return () => { alive = false; };
+  }, [page, attempt]);
+
+  const lastPage = Math.max(1, Math.ceil(total / 20));
+  const sampleTag = (
+    <span style={{ display: "inline-block", marginBottom: 16, background: t.amberDim, color: t.amber, border: `1px solid ${t.amberBorder}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>Sample data</span>
+  );
 
   return (
     <div style={{ padding: "24px 28px", overflowY: "auto", flex: 1, minHeight: 0, animation: "fadeUp 0.25s ease-out" }}>
@@ -51,58 +55,44 @@ export default function LLIReportsPage({ t, showToast }: Props) {
 
       {tab === "reports" && (
         <>
-          {/* Filter chips */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" as const }}>
-            {["All","PCI-DSS","SOX","GDPR","FCA","SWIFT-CSP","Internal"].map(s => (
-              <button key={s} onClick={() => setFilterStd(s)} style={{ padding: "5px 14px", borderRadius: 99, border: `1px solid ${filterStd === s ? t.blue : t.border}`, background: filterStd === s ? t.blueDim : t.card, color: filterStd === s ? t.blue : t.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}>{s}</button>
-            ))}
-          </div>
+          {loading && <div style={{ fontSize: 13, color: t.textMuted }}>Loading reports...</div>}
+          {!loading && error && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 13, color: t.red }}>{error}</span>
+              <Btn t={t} variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>Retry</Btn>
+            </div>
+          )}
+          {!loading && !error && reports.length === 0 && <div style={{ fontSize: 13, color: t.textMuted }}>No incident reports have been generated yet.</div>}
 
           {/* Report cards grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
-            {filtered.map(r => {
-              const st = statusStyle(r.status, t);
-              return (
-                <Card key={r.id} t={t} style={{ padding: "18px 20px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                    <div>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.blue, fontWeight: 500, display: "block", marginBottom: 4 }}>{r.id}</span>
-                      <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{r.standard}</span>
-                    </div>
-                    <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+            {!loading && reports.map(r => (
+              <Card key={r.id} t={t} style={{ padding: "18px 20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.blue, fontWeight: 500, display: "block", marginBottom: 4 }}>{r.id}</span>
+                    <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{r.source}</span>
                   </div>
-
-                  <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.4 }}>{r.title}</div>
-                  <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 14 }}>Period: {r.period} · {r.size}</div>
-
-                  {r.score > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                        <span style={{ fontSize: 12, color: t.textSub }}>Compliance Score</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: r.score >= 90 ? t.green : r.score >= 70 ? t.amber : t.red, fontFamily: "'DM Mono',monospace" }}>{r.score}%</span>
-                      </div>
-                      <ProgressBar value={r.score} color={r.score >= 90 ? t.green : r.score >= 70 ? t.amber : t.red} t={t}/>
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {r.critical > 0 && <span style={{ background: t.redDim, color: t.red, borderRadius: 99, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>⚠ {r.critical} critical</span>}
-                      {r.findings > 0 && <span style={{ background: t.badge, color: t.textSub, borderRadius: 99, padding: "2px 8px", fontSize: 11 }}>{r.findings} findings</span>}
-                      {r.findings === 0 && <span style={{ background: t.greenDim, color: t.green, borderRadius: 99, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>✓ Clean</span>}
-                    </div>
-                    {r.status === "ready"
-                      ? <Btn t={t} variant="primary" size="sm" icon={Icons.download} onClick={() => showToast(`Downloaded ${r.id}`, "success")}>Download</Btn>
-                      : <Btn t={t} variant="ghost" size="sm" disabled>Processing…</Btn>}
-                  </div>
-                </Card>
-              );
-            })}
+                  <span style={{ background: r.grounded ? t.greenDim : t.amberDim, color: r.grounded ? t.green : t.amber, border: `1px solid ${r.grounded ? t.greenBorder : t.amberBorder}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{r.grounded ? "Verified" : "Unverified"}</span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.4 }}>{r.title}</div>
+                <div style={{ fontSize: 12, color: t.textMuted }}>Created: {(r.created_at ?? "").slice(0, 16).replace("T", " ")}</div>
+              </Card>
+            ))}
           </div>
+
+          {total > 20 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 20 }}>
+              <Btn t={t} variant="ghost" size="sm" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}>Previous</Btn>
+              <span style={{ fontSize: 12, color: t.textMuted }}>Page {page} of {lastPage}</span>
+              <Btn t={t} variant="ghost" size="sm" disabled={page >= lastPage || loading} onClick={() => setPage(p => p + 1)}>Next</Btn>
+            </div>
+          )}
         </>
       )}
 
-      {tab === "compliance" && (
+      {tab === "compliance" && (<>
+        {sampleTag}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
           {STANDARDS.map(std => (
             <Card key={std.id} t={t} style={{ padding: "22px 24px" }}>
@@ -128,9 +118,10 @@ export default function LLIReportsPage({ t, showToast }: Props) {
             </Card>
           ))}
         </div>
-      )}
+      </>)}
 
-      {tab === "generate" && (
+      {tab === "generate" && (<>
+        {sampleTag}
         <div style={{ maxWidth: 680 }}>
           <Card t={t} style={{ padding: "28px 32px" }}>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: t.text }}>Generate a New Report</h2>
@@ -173,7 +164,7 @@ export default function LLIReportsPage({ t, showToast }: Props) {
             </div>
           </Card>
         </div>
-      )}
+      </>)}
     </div>
   );
 }
