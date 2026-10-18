@@ -17,6 +17,7 @@ CLI:                     python backend/ml/copilot.py "What caused INC-2026-0081
 """
 import argparse
 import json
+import os
 import re
 import time
 import urllib.error
@@ -28,7 +29,7 @@ try:                      # imported as a package by the backend: from backend.m
 except ImportError:       # run as a script: python backend/ml/copilot.py
     import summarize as S
 
-OUT = Path(__file__).resolve().parent / "output"
+OUT = Path(os.environ.get("SENTRA_ML_OUTPUT", Path(__file__).resolve().parent / "output"))   # backend may override
 SEV_ORDER = ["critical", "high", "medium", "low"]
 VECTOR_WORDS = {
     "Account Takeover": ["takeover", "ato", "hijack", "compromised account"],

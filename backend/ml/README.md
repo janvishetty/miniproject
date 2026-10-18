@@ -59,6 +59,12 @@ added. Code reading them should ignore unknown fields. A sample of every file: `
   E…/T…/A… IDs are stable. Every `event_ids` entry exists in the raw CSVs; `preprocessing_report.json` lists
   counts per check and `dropped_ids` when anything is removed (0 rows on this dataset).
 - No prompts; a failed step exits non-zero. Ollama is needed only by `summarize.py` and `copilot.answer()`.
+- Calling from the API: `summarize.summarize(incident_dict)` and `copilot.answer(question)` / `copilot.welcome()` are
+  plain blocking functions with no side effects (summarize writes nothing; answer only reads the outputs). Wrap them
+  however you like, e.g. `run_in_threadpool`. `copilot` reads from `backend/ml/output/`, or from `SENTRA_ML_OUTPUT`
+  if set. Use `start` (ISO timestamp) as the full created date; `created` is only the HH:MM the frontend mock shows.
+- `dashboard.json` stat counts are computed from the run (every incident is `OPEN`). Once analysts change status,
+  recompute the stat cards from your `incidents.status` column.
 
 ### `GET /incidents` -> `output/incidents.json`
 
@@ -161,7 +167,7 @@ stuffing from Moscow".
 | Page / element (frontend/src) | Replace the mock with | Notes |
 |---|---|---|
 | Dashboard stat cards (event counts: `stats.event_funnel` = flagged_by_model + flagged_by_rules_only = grouped = in_incidents + in_watchlist) | `dashboard.json` -> `stats` (`active_incidents`, `critical`, `platform_risk_score`, `events_analysed` + `*_sub` texts) | "Avg Response Time" is analyst workflow data, not ML: keep or drop |
-| Dashboard risk map (`RISK_NODES`) | `dashboard.json` -> `risk_map` (`id, tag, score, alerts, risk`) | One node per API endpoint, from `api_logs.csv` |
+| Dashboard risk map (`RISK_NODES`) | `dashboard.json` -> `risk_map` (`id, tag, score, alerts, risk`, plus `by_type` and the full `incidents` list); title in `risk_map_title` ("API Endpoint Risk Map") | One node per API endpoint. Login/transfer nodes come from the incidents' own events (`api_logs.csv` only records successful calls); the others from attacker IPs in `api_logs.csv` |
 | Dashboard live events (`STREAM_POOL`) | `dashboard.json` -> `live_events` (`ts, node, msg, type`) | Newest first, `type` is `alert`/`warn` |
 | Dashboard recent incidents (`RECENT`) | `dashboard.json` -> `recent` (`id, sev, title, time, status`) | |
 | Incidents list + detail (`ALL`) | `GET /incidents` | Same field names |

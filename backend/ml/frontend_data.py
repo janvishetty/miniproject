@@ -35,21 +35,32 @@ def risk_level(score):
 
 
 def risk_map(incidents, api):
-    """For each endpoint: which incidents' attacker IPs called it during the attack window (+1h after)."""
+    """For each API endpoint: the incidents that touched it.
+    - every incident with login events hit /api/v1/login, every incident with transfers hit /api/v1/transfer
+      (api_logs.csv only records SUCCESSFUL calls, so failed brute-force logins never appear there)
+    - other endpoints: the incident's attacker IPs called them during the attack window (+1h after), from api_logs
+    score = mean risk of those incidents; incidents = the full list, highest risk first."""
     api = api.assign(timestamp=pd.to_datetime(api.timestamp))
     hits = {e: [] for e in api.endpoint.unique()}
     for inc in incidents:
+        sq = inc.get("sequence", {})
+        touched = set()
+        if sq.get("failed_logins") or sq.get("successful_logins"):
+            touched.add("/api/v1/login")
+        if sq.get("transfers"):
+            touched.add("/api/v1/transfer")
         attacker = [d["ip"] for d in inc.get("ip_details", []) if not d["usual_for_user"]] or inc["ips"]
         start, end = pd.Timestamp(inc["start"]), pd.Timestamp(inc["end"]) + pd.Timedelta(hours=1)
-        rows = api[api.ip_address.isin(attacker) & api.timestamp.between(start, end)]
-        for e in rows.endpoint.unique():
-            hits[e].append(inc)
+        touched |= set(api[api.ip_address.isin(attacker) & api.timestamp.between(start, end)].endpoint)
+        for e in touched:
+            hits.setdefault(e, []).append(inc)
     nodes = []
     for e, incs in hits.items():
         score = int(round(sum(i["risk_score"] for i in incs) / len(incs))) if incs else 0   # mean risk
         nodes.append({"id": NAME.get(e, e), "endpoint": e, "tag": TAG.get(e, "API"), "score": score,
                       "alerts": len(incs), "risk": risk_level(score) if incs else "low",
-                      "incidents": [i["id"] for i in sorted(incs, key=lambda x: -x["risk_score"])][:10]})
+                      "by_type": dict(Counter(i["vector"] for i in incs).most_common()),
+                      "incidents": [i["id"] for i in sorted(incs, key=lambda x: -x["risk_score"])]})
     return sorted(nodes, key=lambda n: (-n["score"], -n["alerts"]))
 
 
@@ -109,8 +120,9 @@ def main():
     dash = {
         "stats": {
             "active_incidents": len(open_inc),
-            "critical": sev.get("critical", 0), "high": sev.get("high", 0),
-            "active_incidents_sub": f"{sev.get('critical', 0)} critical need action",
+            # counts of OPEN (not RESOLVED) incidents; the backend should recompute these from its own status column
+            "critical": sum(i["sev"] == "critical" for i in open_inc), "high": sum(i["sev"] == "high" for i in open_inc),
+            "active_incidents_sub": f"{sum(i['sev'] == 'critical' for i in open_inc)} critical need action",
             "platform_risk_score": platform,
             "platform_risk_sub": "severity-weighted mean risk of open incidents",
             "events_analysed": auth_n + txn_n,
@@ -122,6 +134,7 @@ def main():
                                         if i["vector"] == "Account Takeover"), 2),
             "detected_by": dict(Counter(i.get("detected_by", "ml") for i in incidents)),
         },
+        "risk_map_title": "API Endpoint Risk Map",
         "risk_map": risk_map(incidents, api),
         "live_events": live_events(incidents, out),
         "recent": [{"id": i["id"], "sev": i["sev"], "title": i["title"], "time": i["created"],
