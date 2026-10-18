@@ -11,8 +11,8 @@ This document covers only what exists in the code today.
 | 1 | Foundation and auth: config, Supabase clients, error format, logging, security headers, rate limiting, register / login / me / logout, roles, audit log, database schema | **Done** |
 | 2 | CSV ingestion (`data/` → `raw_events`, `events`, reference tables): admin-only routes, dry run, background jobs, audit summary | **Done** |
 | 3 | ML pipeline integration (`backend/ml/output/` → `pipeline_runs`, `ml_results`, `incidents`, `incident_events`, `rule_alerts`, `reports`, `dashboard_snapshots`): admin-only run / load routes. Verified on real data on 18 Oct 2026 (see **Step 3 verified results**) | **Done** |
-| 4 | Dashboard, report and Copilot APIs | Planned |
-| 5 | Hardening and deployment (pinned versions, trusted proxy headers, production config) | Planned |
+| 4 | 4A plan; 4B dashboard, incidents, reports and Copilot APIs; 4C frontend wiring (login, incidents, dashboard, Copilot, reports). Verified on real data on 18 Oct 2026 (see section 12) | **Done** |
+| 5 | 5B results doc ([../docs/RESULTS.md](../docs/RESULTS.md)) is done. Hardening and deployment (pinned versions, trusted proxy headers, production config) are pending | **In progress** |
 
 ## Requirements
 
@@ -96,7 +96,7 @@ pytest
 
 [pytest.ini](pytest.ini) sets the import path and the `tests/` folder, so no extra flags are needed. Use `pytest -v` to see every test name.
 
-The full suite is **185 tests** (from the last full run).
+The full suite is **356 tests** (see [../docs/RESULTS.md](../docs/RESULTS.md)).
 
 The tests never touch your real Supabase project, never read the real `data/` folder and never read the real `backend/ml/output/`. [tests/conftest.py](tests/conftest.py) sets fake environment variables before the app is imported and replaces the Supabase clients with an in-memory fake (it supports select with filters, ordering, paging and counts, insert, update, upsert, `rpc`, unique-key rules and simulated outages). Rate limiting is off during tests, except in the test that checks it.
 
@@ -109,6 +109,7 @@ The tests never touch your real Supabase project, never read the real `data/` fo
 | [tests/test_ingestion.py](tests/test_ingestion.py) | Ingestion routes: authorization (401 / 403 / 200), dry run, one job at a time (409), idempotent rerun, retry with backoff, summary, audit entry without row data |
 | [tests/test_ml_loader.py](tests/test_ml_loader.py) | Parsing of the ML output (`is_flagged` used, `"None"` → NULL, severity lowercase, stale reports), consistency checks, `dry_parse`, and the load against the fake database: already loaded, `force`, count mismatch, missing `set_current_run`, unknown event ids |
 | [tests/test_ml_adapter.py](tests/test_ml_adapter.py) | Script allowlist, absolute interpreter only, clean child environment (no `SUPABASE_*`), stdout discarded, timeout, stop at first failure (tiny fake scripts only) |
+| `test_dashboard.py`, `test_incidents.py`, `test_reports.py`, `test_copilot_bridge.py`, `test_step4_misc.py` | Step 4 read APIs, report jobs, the AI bridge, status changes and force reload; listed in section 12 |
 | [tests/test_pipeline_routes.py](tests/test_pipeline_routes.py) | `/admin/pipeline/*`: 401 / 403 (analyst, manager) / 2xx for every route, 409s, dry runs, failed runs, audit entries |
 
 The ingestion tests read the small CSV files in [tests/fixtures/data/](tests/fixtures/data/); the pipeline tests read the synthetic files in [tests/fixtures/ml_output/](tests/fixtures/ml_output/).
@@ -137,6 +138,8 @@ The ingestion tests read the small CSV files in [tests/fixtures/data/](tests/fix
 | GET | `/docs`, `/redoc`, `/openapi.json` | Public, development only | – | API docs. Return `404` when `APP_ENV=production`. |
 
 Logged-in routes need the header `Authorization: Bearer <access_token>`.
+
+The Step 4 routes (`/dashboard`, `/incidents`, `/reports`, `/copilot`) are listed in [section 12](#12-step-4-read-apis-dashboard-incidents-reports-copilot) and in [../docs/API_CONTRACT.md](../docs/API_CONTRACT.md).
 
 Input rules for `/auth/register`:
 
@@ -429,7 +432,8 @@ backend/
 │                       ml_loader.py (parses and loads ml/output as one pipeline run),
 │                       pipeline.py (glue for the pipeline routes),
 │                       incident_store.py (current-run reads, search, PATCH rules),
-│                       reports.py, ai_bridge.py, copilot_guard.py (Step 4)
+│                       reports.py (generates one report through the AI bridge; stores it only if verified),
+│                       ai_bridge.py (runs the AI bridge), copilot_guard.py (Copilot grounding)
 ├── sql/
 │   ├── schema.sql          creates all tables, indexes and RLS
 │   ├── verify_schema.sql   read-only checks
@@ -439,7 +443,7 @@ backend/
 └── ml/                 Janvi's ML module (read-only for the API)
 ```
 
-**Read-only for the API:** `backend/ml/` (Janvi) and `fsia_cyber/` (Aarushi, at the repo root) belong to other team members. The API must never modify them. Later steps will only read their output.
+**Read-only for the API:** `backend/ml/` (Janvi) and `fsia_cyber/` (Aarushi, at the repo root) belong to other team members. The API must never modify them. It only reads their output.
 
 ## 11. Troubleshooting
 
