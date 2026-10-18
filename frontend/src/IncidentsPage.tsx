@@ -4,12 +4,21 @@ import { Card, SevBadge, StatusBadge, Btn, ProgressBar, Icons } from "./ui";
 import * as api from "./api";
 
 const PAGE_SIZE = 20;
+const REPORT_POLL_MS = 2_000;
+const REPORT_POLL_MAX_MS = 10 * 60_000;
+const REPORT_POLL_MAX_FAILS = 3;
+const REPORT_ERRORS: Record<string, string> = {
+  ai_unavailable: "AI service unavailable. Start Ollama.",
+  unverified: "Report could not be verified",
+  timeout: "Report generation timed out",
+  stale_run: "Data changed, reload the page",
+};
 
 type ConfirmAction = { label: string; message: string; variant: "danger" | "success" | "primary" } | null;
 
-interface Props { t: Theme; showToast: (msg: string, type?: string) => void; onChanged?: () => void; }
+interface Props { t: Theme; showToast: (msg: string, type?: string) => void; onChanged?: () => void; role?: string; }
 
-export default function IncidentsPage({ t, showToast, onChanged }: Props) {
+export default function IncidentsPage({ t, showToast, onChanged, role = "" }: Props) {
   const [items, setItems] = useState<api.IncidentItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -26,6 +35,9 @@ export default function IncidentsPage({ t, showToast, onChanged }: Props) {
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [genId, setGenId] = useState<string | null>(null);
+  const [genSecs, setGenSecs] = useState(0);
+  const genRun = useRef(0);
   const listSeq = useRef(0);
   const detailSeq = useRef(0);
 
@@ -34,6 +46,16 @@ export default function IncidentsPage({ t, showToast, onChanged }: Props) {
     const timer = setTimeout(() => { setSearchQ(search.trim()); setPage(1); }, 350);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Seconds counter while a report is being generated; stop any poll when leaving the page.
+  useEffect(() => {
+    if (!genId) return;
+    const t0 = Date.now();
+    setGenSecs(0);
+    const iv = setInterval(() => setGenSecs(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [genId]);
+  useEffect(() => () => { genRun.current++; }, []);
 
   // List
   useEffect(() => {
@@ -73,6 +95,8 @@ export default function IncidentsPage({ t, showToast, onChanged }: Props) {
 
   function select(id: string) {
     if (id === selectedId) return;
+    genRun.current++;
+    setGenId(null);
     setDetail(null);
     setReport(null);
     setSelectedId(id);
@@ -100,16 +124,59 @@ export default function IncidentsPage({ t, showToast, onChanged }: Props) {
   function doAction(label: string) {
     setConfirm(null);
     if (label === "Contain") changeStatus("CONTAINED");
+    if (label === "Resolve") changeStatus("RESOLVED");
   }
 
   async function generateReport() {
-    if (!detail) return;
-    if (!detail.report) { showToast("No report for this incident yet", "warning"); return; }
+    if (!detail || genId) return;
+    const id = detail.id;
+    if (detail.report) {
+      try {
+        setReport(await api.getReport(id));
+        showToast("Report available");
+      } catch (err) {
+        showToast(err instanceof api.ApiError ? err.message : "Could not load the report", "error");
+      }
+      return;
+    }
+    const run = ++genRun.current;
+    const alive = () => run === genRun.current;
+    const started = Date.now();
+    setGenId(id);
     try {
-      setReport(await api.getReport(detail.id));
-      showToast("Report available");
+      const job = await api.startReport(id);
+      let cur = job;
+      let fails = 0;
+      while (cur.status === "running") {
+        if (Date.now() - started > REPORT_POLL_MAX_MS) { showToast(REPORT_ERRORS.timeout, "error"); return; }
+        await new Promise(r => setTimeout(r, REPORT_POLL_MS));
+        if (!alive()) return;
+        try {
+          cur = await api.getReportJob(job.job_id);
+          fails = 0;
+        } catch (e) {
+          // Tolerate short network/timeout blips (status 0); anything else, or too many in a row, gives up.
+          if (!alive()) return;
+          if (e instanceof api.ApiError && e.status === 0 && ++fails < REPORT_POLL_MAX_FAILS) continue;
+          throw e;
+        }
+        if (!alive()) return;
+      }
+      if (cur.status === "failed") {
+        const e = cur.error;
+        showToast((e && REPORT_ERRORS[e.code]) || e?.message || "Report generation failed", "error");
+        return;
+      }
+      setReport(await api.getReport(id));
+      if (!alive()) return;
+      setReloadKey(k => k + 1);
+      showToast("Report generated and verified");
     } catch (err) {
-      showToast(err instanceof api.ApiError ? err.message : "Could not load the report", "error");
+      if (!alive()) return;
+      if (err instanceof api.ApiError && err.status === 429) showToast("Another report is being generated, try again shortly", "warning");
+      else showToast(err instanceof api.ApiError ? err.message : "Could not generate the report", "error");
+    } finally {
+      if (alive()) setGenId(null);
     }
   }
 
@@ -195,10 +262,13 @@ export default function IncidentsPage({ t, showToast, onChanged }: Props) {
 
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" as const }}>
-              <Btn t={t} variant="primary" icon={Icons.eye} disabled={busy} onClick={() => changeStatus("INVESTIGATING")}>Investigate</Btn>
-              <Btn t={t} variant="success" disabled={busy} onClick={() => setConfirm({ label: "Contain", message: `Isolate the affected asset (${detail.asset ?? "unknown"}) and stop the threat from spreading?`, variant: "success" })}>Contain Threat</Btn>
+              <Btn t={t} variant="primary" icon={Icons.eye} disabled={busy || ["INVESTIGATING", "CONTAINED", "RESOLVED"].includes(detail.status)} onClick={() => changeStatus("INVESTIGATING")}>Investigate</Btn>
+              <Btn t={t} variant="success" disabled={busy || ["CONTAINED", "RESOLVED"].includes(detail.status)} onClick={() => setConfirm({ label: "Contain", message: `Isolate the affected asset (${detail.asset ?? "unknown"}) and stop the threat from spreading?`, variant: "success" })}>Contain Threat</Btn>
+              {(role === "manager" || role === "admin") && detail.status !== "RESOLVED" && (
+                <Btn t={t} variant="success" disabled={busy} onClick={() => setConfirm({ label: "Resolve", message: `Mark ${detail.id} as resolved?`, variant: "success" })}>Resolve</Btn>
+              )}
               <Btn t={t} variant="danger"  onClick={() => showToast(`Escalation noted for ${detail.id}`, "warning")}>Escalate</Btn>
-              <Btn t={t} variant="ghost"   onClick={generateReport}>Generate Report</Btn>
+              <Btn t={t} variant="ghost"   disabled={!!genId} onClick={generateReport}>{genId ? `Generating… (${genSecs}s)` : "Generate Report"}</Btn>
             </div>
 
             {/* Meta grid */}

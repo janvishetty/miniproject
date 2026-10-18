@@ -24,8 +24,8 @@ backend's AI bridge.
 |---|---|
 | Login | Sign-in only; accounts are created by an admin via the API for now. |
 | Dashboard | Counts, severity and type breakdowns for the current pipeline run. |
-| Incidents | Search and filter by severity/status, paging, incident detail with timeline, "Why it was flagged" (SHAP and rule reasons) and AI analysis; Investigate / Contain status changes. |
-| Reports | AI-generated, fact-checked reports for critical and high incidents. |
+| Incidents | Search and filter by severity/status, paging, incident detail with timeline, "Why it was flagged" (SHAP and rule reasons) and AI analysis; Investigate / Contain / Resolve (manager/admin) status changes. |
+| Reports | AI-generated, fact-checked reports for critical and high incidents; any incident's report can be generated on demand from its page. |
 | AI Copilot | A welcome summary built from code; free questions answered by the LLM, grounded against incident data. |
 
 Route details (including report generation) are in [docs/API_CONTRACT.md](docs/API_CONTRACT.md).
