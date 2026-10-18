@@ -269,11 +269,12 @@ def facts_for(sel, reports, incidents, with_stats, why=(), full=False):
     for i in sel:
         if compact:
             loc = next((o["location"] for o in i.get("sequence", {}).get("successful_logins", [])), "")
-            parts.append(f"- {i['id']} | {i['vector']} | {i['sev']} | users {', '.join(i['users'])} | IP {', '.join(i['ips'][:2])}"
+            parts.append(f"- {i['id']} | {i['vector']} | {i['sev']} | status {i.get('status') or 'OPEN'} | users {', '.join(i['users'])} | IP {', '.join(i['ips'][:2])}"
                          f"{' (' + loc + ')' if loc else ''} | ₹{i['amount_total']:,.0f} moved | {i['start'][:10]} | "
                          + S.sequence_line(i))
             continue
-        block = S.facts_block(i) + "\nAll users in this incident: " + ", ".join(i["users"])
+        block = (S.facts_block(i) + "\nAll users in this incident: " + ", ".join(i["users"])
+                 + f"\nCurrent status: {i.get('status') or 'OPEN'}")
         r = reports.get(i["id"])
         if r and r.get("grounding", {}).get("grounded") and not compact:
             block += f"\nVerified report summary: {r['summary']}"
@@ -456,6 +457,10 @@ OWNER_Q = re.compile(r"\b(?:themselves|himself|herself|the customer (?:did|made|
 STATUS_Q = re.compile(r"\bstatus(?:es)?\b|\bstate of\b|\b(?:is|are|has|have)\b[^?]{0,40}\b(?:been )?(?:resolved|closed|"
                       r"contained|still open|under investigation|investigating)\b", re.I)
 STATUSES = ("OPEN", "INVESTIGATING", "CONTAINED", "RESOLVED")
+WIDER_Q = re.compile(r"\bwhy\b|\bexplain\w*|\bdescri\w+|\bwhat happened\b|\bhow did\b|\btimeline\b|\bsummar\w*|"
+                     r"\brecommend\w*|\bnext steps?\b|\bremediat\w*|\bwhat (?:should|do) we do\b|\breasons?\b|"
+                     r"\bdetails?\b|\bsequence\b|\bhow much\b|\bmoney\b|\bamount\b|\bips?\b|\busers?\b|\baccounts?\b|"
+                     r"\bdevices?\b|\blocations?\b|\bwhen\b|\bshap\b|\bmitre\b|\bconfidence\b", re.I)
 MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
 
 
@@ -487,11 +492,15 @@ def ranking_answer(metric, sel, incidents, question):
     return f"{head}\n\nTop {len(sel)} by {label}:\n{rows}"
 
 
+def status_line(i):
+    return (f"**{i['id']}**: status {i.get('status') or 'OPEN'}" + (f" (analyst: {i['analyst']})" if i.get("analyst") and i["analyst"] != "Unassigned" else "")
+            + f" | {i['vector']} | {i['sev']} severity | risk {float(i['risk_score']):.1f}")
+
+
 def status_answer(sel, incidents, why):
     """Status questions: the stored status field only (the backend overlays the live database status), no LLM."""
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
-    lines = [f"**{i['id']}**: {i.get('status') or 'OPEN'}" + (f" (analyst: {i['analyst']})" if i.get("analyst") else "")
-             for i in sel]
+    lines = [status_line(i) for i in sel]
     lines += [f"{m}: not found in the current data" for m in missing]
     if not lines:           # no incident named: the status breakdown
         c = Counter((i.get("status") or "OPEN") for i in incidents)
@@ -561,7 +570,8 @@ def answer(question, max_attempts=3):
     sel, why, with_stats = retrieve(question, incidents)
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
     ranked = next((w.split("ranked by ")[1] for w in why if w.startswith("ranked by")), None)
-    if STATUS_Q.search(question) and not ranked:   # "status of INC-...": the stored field, exactly
+    if STATUS_Q.search(question) and not ranked and not WIDER_Q.search(question):
+        # status / severity / type / risk only: the stored fields, exactly, no LLM
         return {"question": question, "answer": status_answer([] if "top risk" in why else sel, incidents, why),
                 "incidents": [] if "top risk" in why else [i["id"] for i in sel], "retrieved_by": why + ["status"],
                 "source": "facts",
@@ -641,6 +651,8 @@ def answer(question, max_attempts=3):
     else:
         src, text = "facts", fallback(sel, incidents, with_stats, why)
         best["grounding"] = check(text, vfacts, sel, llm=False)
+    if STATUS_Q.search(question) and sel:      # stored status written by code, never by the LLM
+        notes = ["\n".join(status_line(i) for i in sel) + "\n"] + notes
     if notes:                                   # the question assumed something false: code corrects it first
         text = " ".join(notes) + "\n\n" + text
     if missing and src != "facts":              # the question named something the data doesn't have: say so first
