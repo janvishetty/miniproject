@@ -126,7 +126,12 @@ KNOWN_WORDS = {"i", "ip", "ips", "inc", "id", "ids", "mfa", "otp", "api", "waf",
                "llm", "shap", "mitre", "att&ck", "copilot", "sentra", "vantix", "fsia", "rs", "inr", "india", "indian",
                "september", "sept", "sep", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
                "sunday", "today", "yesterday", "ok", "okay", "please", "hi", "hello", "thanks", "and", "or", "the",
-               "what", "which", "who", "when", "where", "why", "how", "show", "tell", "list", "give", "explain"}
+               "what", "which", "who", "when", "where", "why", "how", "show", "tell", "list", "give", "explain",
+               "do", "does", "did", "don't", "not", "no", "yes", "is", "are", "was", "were", "be", "can", "could",
+               "should", "would", "will", "must", "only", "just", "also", "then", "now", "answer", "reply", "use",
+               "include", "exclude", "infer", "guess", "assume", "exactly", "stored", "status", "current", "each",
+               "every", "all", "both", "any", "if", "for", "from", "with", "without", "in", "on", "of", "to", "a",
+               "an", "it", "its", "this", "that", "these", "those", "me", "my", "we", "our", "you", "your"}
 NAME = re.compile(r"\b(?:[A-Z][A-Za-z0-9&]*(?:-[A-Za-z0-9]+)*)\b")
 ID_LIKE = re.compile(r"^(?:INC-\d{4}-\d{4}|U\d{4}|T\d{6}|E\d{6}|A\d{6}|T\d{4}(?:\.\d{3})?|R_[A-Z_]+)$")
 
@@ -139,7 +144,8 @@ def unknown_names(q, incidents):
     out = []
     for m in NAME.finditer(q):
         tok = m.group(0)
-        if m.start() == 0 or ID_LIKE.match(tok):        # first word is capitalised anyway; IDs are checked elsewhere
+        before = q[:m.start()].rstrip()
+        if not before or before[-1] in ".!?:;\n\"'(-" or ID_LIKE.match(tok):   # sentence starts are capitalised anyway
             continue
         parts = re.findall(r"[a-z0-9&]+", tok.lower())
         if parts and not all(x in vocab for x in parts) and tok not in out:
@@ -152,6 +158,8 @@ def retrieve(q, incidents, max_items=5):
     ql = q.lower()
     by_id = {i["id"]: i for i in incidents}
     ids = [x.upper() for x in re.findall(r"\binc-\d{4}-\d{4}\b", ql)]
+    for yr, _, rest in re.findall(r"\binc-(\d{4})-(\d{4})((?:\s*(?:,|and|&|/)\s*\d{4}\b)+)", ql):
+        ids += [f"INC-{yr}-{n}" for n in re.findall(r"\d{4}", rest) if f"INC-{yr}-{n}" not in ids]
     users = {x.upper() for x in re.findall(r"\bu\d{4}\b", ql)}
     txns = {x.upper() for x in re.findall(r"\bt\d{6}\b", ql)}
     ips = set(re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", q))
@@ -445,6 +453,9 @@ FAIL_Q = re.compile(r"\b(?:why|how)\b[^?]*\b(?:fail(?:ed)?|unsuccessful|didn'?t 
 BLOCK_Q = re.compile(r"\b(?:should|can|do|shall|must)\b[^?]{0,20}\bblock\b", re.I)
 OWNER_Q = re.compile(r"\b(?:themselves|himself|herself|the customer (?:did|made|sent)|by the (?:customer|user)|"
                      r"(?:was|is) it (?:really )?(?:the customer|them|the user)|their own)\b", re.I)
+STATUS_Q = re.compile(r"\bstatus(?:es)?\b|\bstate of\b|\b(?:is|are|has|have)\b[^?]{0,40}\b(?:been )?(?:resolved|closed|"
+                      r"contained|still open|under investigation|investigating)\b", re.I)
+STATUSES = ("OPEN", "INVESTIGATING", "CONTAINED", "RESOLVED")
 MONEY_Q = re.compile(r"\b(?:how much|money|stolen|lost|amount|transferr?ed|rupees|₹)\b", re.I)
 
 
@@ -476,10 +487,27 @@ def ranking_answer(metric, sel, incidents, question):
     return f"{head}\n\nTop {len(sel)} by {label}:\n{rows}"
 
 
+def status_answer(sel, incidents, why):
+    """Status questions: the stored status field only (the backend overlays the live database status), no LLM."""
+    missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
+    lines = [f"**{i['id']}**: {i.get('status') or 'OPEN'}" + (f" (analyst: {i['analyst']})" if i.get("analyst") else "")
+             for i in sel]
+    lines += [f"{m}: not found in the current data" for m in missing]
+    if not lines:           # no incident named: the status breakdown
+        c = Counter((i.get("status") or "OPEN") for i in incidents)
+        lines = [f"Status of all {len(incidents)} incidents: " +
+                 ", ".join(f"{s} {c[s]}" for s in STATUSES if c[s]) + ".",
+                 "Name an incident ID (INC-2026-0081) for its own status."]
+    return "\n".join(lines)
+
+
 def premise_notes(question, sel):
     """Facts written by code when the question assumes something false. The LLM answer comes after them."""
     notes = []
-    if DONE_Q.search(question):
+    acted = [i for i in sel if (i.get("status") or "OPEN") in ("CONTAINED", "RESOLVED")]
+    if DONE_Q.search(question) and acted:
+        notes.append("Stored status: " + ", ".join(f"{i['id']} {i['status']}" for i in acted) + " (set by an analyst).")
+    elif DONE_Q.search(question):
         notes.append("Nothing has been locked, blocked or frozen yet: Vantix only detects incidents and recommends "
                      "containment; an analyst carries it out. The recommended actions are listed per incident.")
     if BLOCK_Q.search(question):
@@ -533,6 +561,12 @@ def answer(question, max_attempts=3):
     sel, why, with_stats = retrieve(question, incidents)
     missing = [w.split(": ", 1)[1] for w in why if w.startswith("not found")]
     ranked = next((w.split("ranked by ")[1] for w in why if w.startswith("ranked by")), None)
+    if STATUS_Q.search(question) and not ranked:   # "status of INC-...": the stored field, exactly
+        return {"question": question, "answer": status_answer([] if "top risk" in why else sel, incidents, why),
+                "incidents": [] if "top risk" in why else [i["id"] for i in sel], "retrieved_by": why + ["status"],
+                "source": "facts",
+                "grounding": {"grounded": True, "unverified": [], "checked": 0}, "attempts": [],
+                "seconds": round(time.time() - t0, 1)}
     if ranked and sel:            # "most / first / largest": exact answer from code (the 3B model mis-ranks lists)
         text = ranking_answer(ranked, sel, incidents, question)
         top = [i for i in sel if i["id"] in text.split("\n\n")[0]]
