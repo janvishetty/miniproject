@@ -154,72 +154,75 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
   }
 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const note = { fontSize: 12, color: t.textMuted, padding: "14px 20px" };
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, animation: "fadeUp 0.25s ease-out" }}>
+    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out" }}>
 
-      {/* Sidebar list */}
-      <div style={{ width: 380, borderRight: `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.card, flexShrink: 0 }}>
+      {/* List panel (glass) */}
+      <div data-glass="" style={{ width: 380, display: "flex", flexDirection: "column", background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: 20, boxShadow: t.shadow, overflow: "hidden", flexShrink: 0 }}>
         {/* Header */}
-        <div style={{ padding: "20px 20px 14px", borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ padding: "20px 20px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: t.text }}>Incidents</h2>
             <span style={{ background: t.redDim, color: t.red, border: `1px solid ${t.redBorder}`, borderRadius: 99, padding: "2px 10px", fontSize: 12, fontWeight: 600 }}>{total} found</span>
           </div>
 
           {/* Search */}
-          <div style={{ display: "flex", alignItems: "center", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "7px 12px", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: 14, padding: "10px 14px", gap: 8, marginBottom: 12 }}>
             <span style={{ color: t.textMuted }}>{Icons.search}</span>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title or ID..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: t.text, flex: 1 }}/>
           </div>
 
           {/* Filters */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-            {["All","Critical","High","Medium","Low"].map(s => (
-              <button key={s} onClick={() => changeFilter(setFilterSev, s)} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, border: `1px solid ${filterSev === s ? t.blue : t.border}`, background: filterSev === s ? t.blueDim : "transparent", color: filterSev === s ? t.blue : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
-                onMouseEnter={e => { if (filterSev !== s) e.currentTarget.style.background = t.badge; }}
-                onMouseLeave={e => { if (filterSev !== s) e.currentTarget.style.background = "transparent"; }}>{s}</button>
-            ))}
-            <div style={{ width: 1, background: t.border, margin: "0 2px" }}/>
-            {["All","Open","Investigating","Contained","Resolved"].map(s => (
-              <button key={s} onClick={() => changeFilter(setFilterStatus, s)} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, border: `1px solid ${filterStatus === s ? t.blue : t.border}`, background: filterStatus === s ? t.blueDim : "transparent", color: filterStatus === s ? t.blue : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
-                onMouseEnter={e => { if (filterStatus !== s) e.currentTarget.style.background = t.badge; }}
-                onMouseLeave={e => { if (filterStatus !== s) e.currentTarget.style.background = "transparent"; }}>{s === "All" ? "Any status" : s}</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {([[["All", "Critical", "High", "Medium", "Low"], filterSev, setFilterSev], [["All", "Open", "Investigating", "Contained", "Resolved"], filterStatus, setFilterStatus]] as const).map(([opts, current, setter], g) => (
+              <div key={g} style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                {opts.map(o => {
+                  const on = current === o;
+                  return (
+                    <button key={o} aria-pressed={on} onClick={() => changeFilter(setter, o)} style={{ minHeight: 32, fontSize: 12, fontWeight: 600, padding: "0 14px", borderRadius: 99, border: `1px solid ${on ? t.linkBorder : t.btnBorder}`, background: on ? t.input : t.btn, boxShadow: on ? t.inset : t.raisedSm, color: on ? t.link : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={e => { if (!on) e.currentTarget.style.background = t.cardHover; }}
+                      onMouseLeave={e => { if (!on) e.currentTarget.style.background = t.btn; }}>{g === 1 && o === "All" ? "Any status" : o}</button>
+                  );
+                })}
+              </div>
             ))}
           </div>
         </div>
 
         {/* List */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
           {listLoading && [0, 1, 2, 3, 4, 5].map(i => (
-            <div key={i} style={{ padding: "14px 20px", borderBottom: `1px solid ${t.border}`, borderLeft: "3px solid transparent" }}>
+            <div key={i} style={{ padding: "14px 16px", borderRadius: 16, background: t.btn, border: `1px solid ${t.btnBorder}`, boxShadow: t.raisedSm }}>
               <Skeleton t={t} w="40%" h={12} style={{ marginBottom: 10 }}/>
               <Skeleton t={t} h={14} style={{ marginBottom: 10 }}/>
               <Skeleton t={t} w="60%" h={12}/>
             </div>
           ))}
-          {!listLoading && listError && <div style={{ ...note, color: t.red }}>{listError}</div>}
+          {!listLoading && listError && <div role="alert" style={{ background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 12, padding: "10px 14px", fontSize: 12, color: t.red }}>{listError}</div>}
           {!listLoading && !listError && items.length === 0 && <EmptyState icon={Icons.search} title="No incidents found" sub="Try clearing the search or filters." t={t}/>}
-          {!listLoading && items.map(inc => (
-            <div key={inc.id} onClick={() => select(inc.id)} style={{ padding: "14px 20px", borderBottom: `1px solid ${t.border}`, cursor: "pointer", background: selectedId === inc.id ? t.blueDim : "transparent", borderLeft: `3px solid ${sevColor(inc.sev, t).text}`, transition: "background 0.15s" }}
-              onMouseEnter={e => { if (selectedId !== inc.id) e.currentTarget.style.background = t.bg; }}
-              onMouseLeave={e => { if (selectedId !== inc.id) e.currentTarget.style.background = "transparent"; }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.blue, fontWeight: 500 }}>{inc.id}</span>
-                <SevBadge level={inc.sev} t={t}/>
+          {!listLoading && items.map(inc => {
+            const sel = selectedId === inc.id;
+            return (
+              <div key={inc.id} onClick={() => select(inc.id)} style={{ padding: "14px 16px", borderRadius: 16, cursor: "pointer", background: sel ? t.input : t.btn, border: `1px solid ${sel ? t.linkBorder : t.btnBorder}`, boxShadow: sel ? `${t.inset}, 0 0 16px ${t.link}40` : t.raisedSm, transition: "background 0.15s" }}
+                onMouseEnter={e => { if (!sel) e.currentTarget.style.background = t.cardHover; }}
+                onMouseLeave={e => { if (!sel) e.currentTarget.style.background = t.btn; }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.link, fontWeight: 500 }}>{inc.id}</span>
+                  <SevBadge level={inc.sev} t={t}/>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.35 }}>{inc.title}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <StatusBadge status={inc.status} t={t}/>
+                  <span style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace" }}>{inc.created}</span>
+                </div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.35 }}>{inc.title}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <StatusBadge status={inc.status} t={t}/>
-                <span style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace" }}>{inc.created}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Paging */}
-        <div style={{ padding: "10px 20px", borderTop: `1px solid ${t.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "10px 20px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Btn t={t} variant="ghost" size="sm" disabled={page <= 1 || listLoading} onClick={() => setPage(p => p - 1)}>Previous</Btn>
           <span style={{ fontSize: 12, color: t.textMuted }}>Page {page} of {lastPage}</span>
           <Btn t={t} variant="ghost" size="sm" disabled={page >= lastPage || listLoading} onClick={() => setPage(p => p + 1)}>Next</Btn>
@@ -230,7 +233,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
         {!selectedId && !listLoading && <EmptyState icon={Icons.incidents} title="Select an incident" sub="Pick one from the list to see its analysis." t={t}/>}
         {selectedId && !detail && !detailError && (
-          <div aria-label="Loading incident" style={{ padding: "24px 28px" }}>
+          <div aria-label="Loading incident" style={{ padding: "4px 4px 24px" }}>
             <Skeleton t={t} w={220} h={14} style={{ marginBottom: 12 }}/>
             <Skeleton t={t} w="60%" h={24} style={{ marginBottom: 24 }}/>
             <Skeleton t={t} h={44} r={8} style={{ marginBottom: 24 }}/>
@@ -238,13 +241,13 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
             <Skeleton t={t} h={150} r={12}/>
           </div>
         )}
-        {selectedId && detailError && <div style={{ ...note, padding: "24px 28px", color: t.red }}>{detailError}</div>}
+        {selectedId && detailError && <div role="alert" style={{ background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 12, padding: "10px 14px", margin: "4px 4px 0", fontSize: 12, color: t.red }}>{detailError}</div>}
         {detail && (
-          <div style={{ padding: "24px 28px" }} className="animate-fadeIn">
+          <div style={{ padding: "4px 4px 24px" }} className="animate-fadeIn">
             {/* Title */}
             <div style={{ marginBottom: 20, borderLeft: `3px solid ${sevColor(detail.sev, t).text}`, paddingLeft: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: t.blue, fontWeight: 500 }}>{detail.id}</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: t.link, fontWeight: 500 }}>{detail.id}</span>
                 <SevBadge level={detail.sev} t={t}/>
                 <StatusBadge status={detail.status} t={t}/>
               </div>
@@ -291,16 +294,16 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 12, color: t.textSub, fontWeight: 500 }}>AI Confidence</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: t.blue, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.confidence ?? 0)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: t.link, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.confidence ?? 0)}%</span>
                   </div>
-                  <ProgressBar value={detail.confidence ?? 0} color={t.blue} t={t}/>
+                  <ProgressBar value={detail.confidence ?? 0} color={t.link} fill={t.accentGrad} t={t}/>
                 </div>
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 12, color: t.textSub, fontWeight: 500 }}>Business Impact</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: t.amber, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.impact ?? 0)}%</span>
                   </div>
-                  <ProgressBar value={detail.impact ?? 0} color={t.amber} t={t}/>
+                  <ProgressBar value={detail.impact ?? 0} color={t.amber} fill={t.amberFill} t={t}/>
                 </div>
               </div>
             </Card>
@@ -340,7 +343,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                       {i < detail.timeline.length - 1 && <div style={{ width: 2, flex: 1, background: t.border, margin: "2px 0" }}/>}
                     </div>
                     <div style={{ paddingBottom: 16 }}>
-                      <div style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 2 }}>{ev.time} · <span style={{ color: ev.color ?? t.textMuted, fontWeight: 600 }}>{ev.actor}</span></div>
+                      <div style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 2 }}>{ev.time} · <span style={{ color: t.textSub, fontWeight: 600 }}>{ev.actor}</span></div>
                       <div style={{ fontSize: 13, color: t.textSub, lineHeight: 1.4 }}>{ev.msg}</div>
                     </div>
                   </div>
