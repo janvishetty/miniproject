@@ -1,4 +1,4 @@
-import { type Theme, sevColor } from "./theme";
+import { type Theme, sevColor, fillOf } from "./theme";
 import type { Reason, Severity } from "./api";
 
 // ─── Loading skeleton (pulsing block) ────────────────────────────────────────
@@ -16,25 +16,28 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
   let offset = 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Open incidents by severity" style={{ flexShrink: 0 }}>
+      <div style={{ position: "relative", width: 120, height: 120, flexShrink: 0 }}>
+      <div aria-hidden="true" style={{ position: "absolute", inset: 24, borderRadius: "50%", background: t.input, boxShadow: t.inset }}/>
+      <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Open incidents by severity" style={{ position: "absolute", inset: 0 }}>
         <circle cx="60" cy="60" r={R} fill="none" stroke={t.badge} strokeWidth="16"/>
         {SEV_ORDER.map(s => {
           const n = counts[s] ?? 0;
           if (n === 0) return null;
           const len = (n / total) * C;
-          const el = <circle key={s} cx="60" cy="60" r={R} fill="none" stroke={sevColor(s, t).text} strokeWidth="16" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset} transform="rotate(-90 60 60)"/>;
+          const el = <circle key={s} cx="60" cy="60" r={R} fill="none" stroke={sevColor(s, t).fill} strokeWidth="16" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset} transform="rotate(-90 60 60)"/>;
           offset += len;
           return el;
         })}
-        <text x="60" y="58" textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: t.text, fontFamily: "'DM Mono',monospace" }}>{total}</text>
-        <text x="60" y="74" textAnchor="middle" style={{ fontSize: 10, fill: t.textMuted }}>open</text>
+        <text x="60" y="58" textAnchor="middle" style={{ fontSize: 22, fontWeight: 500, fill: t.text, fontFamily: "'DM Mono',monospace" }}>{total}</text>
+        <text x="60" y="74" textAnchor="middle" style={{ fontSize: 11, fill: t.textMuted }}>open</text>
       </svg>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
         {SEV_ORDER.map(s => (
           <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: sevColor(s, t).text, flexShrink: 0 }}/>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: sevColor(s, t).fill, flexShrink: 0 }}/>
             <span style={{ color: t.textSub, flex: 1 }}>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
-            <span style={{ color: t.text, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>{counts[s] ?? 0}</span>
+            <span style={{ color: t.text, fontWeight: 500, fontFamily: "'DM Mono',monospace" }}>{counts[s] ?? 0}</span>
           </div>
         ))}
       </div>
@@ -43,19 +46,20 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
 }
 
 // ─── Horizontal bars (label, bar, value) ─────────────────────────────────────
-export function HBars({ rows, color, t, empty }: { rows: { label: string; value: number; note?: string }[]; color: string; t: Theme; empty: string }) {
+export function HBars({ rows, color, fill, t, empty }: { rows: { label: string; value: number; note?: string }[]; color: string; fill?: string; t: Theme; empty: string }) {
   const max = Math.max(0, ...rows.map(r => r.value));
   if (rows.length === 0 || max === 0) return <div style={{ fontSize: 12, color: t.textMuted }}>{empty}</div>;
+  const f = fillOf(color, t, fill);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {rows.map(r => (
         <div key={r.label}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 4, fontSize: 12 }}>
             <span style={{ color: t.textSub }}>{r.label}</span>
-            <span style={{ color: t.text, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>{r.note ?? r.value}</span>
+            <span style={{ color: t.text, fontWeight: 500, fontFamily: "'DM Mono',monospace" }}>{r.note ?? r.value}</span>
           </div>
-          <div style={{ height: 8, background: t.badge, borderRadius: 99, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
+          <div style={{ height: 8, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
+            <div className="print-keep" style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: f.bg, boxShadow: `0 0 8px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
           </div>
         </div>
       ))}

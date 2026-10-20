@@ -26,7 +26,7 @@ function renderText(text: string, t: Theme) {
     if (bullet) {
       return (
         <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: t.textSub, lineHeight: 1.7, paddingLeft: 4 }}>
-          <span style={{ color: t.blue, flexShrink: 0 }}>•</span>
+          <span style={{ color: t.link, flexShrink: 0 }}>•</span>
           <span style={{ flex: 1, minWidth: 0 }}>
             {bullet[1].split(/\*\*(.*?)\*\*/g).map((p, j) => j % 2 === 1 ? <strong key={j} style={{ color: t.text, fontWeight: 600 }}>{p}</strong> : p)}
           </span>
@@ -48,6 +48,7 @@ export default function AICopilotPage({ t }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const welcomed = useRef(false);
@@ -110,61 +111,65 @@ export default function AICopilotPage({ t }: Props) {
     ask(msg.retry.question, msg.id);
   }
 
-  return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 0, animation: "fadeUp 0.25s ease-out" }}>
+  const botAvatar = (size: number, glow = false) => (
+    <div style={{ width: size, height: size, borderRadius: "50%", padding: Math.max(2, Math.round(size / 28)), background: t.accentGrad, boxShadow: glow ? `0 0 28px ${t.link}59` : undefined, flexShrink: 0 }}>
+      <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: t.bg, boxShadow: glow ? t.raised : t.raisedSm, display: "flex", alignItems: "center", justifyContent: "center", color: t.link }}>
+        <span style={{ display: "flex", transform: `scale(${(size / 100) * 2.2})` }}>{Icons.bot}</span>
+      </div>
+    </div>
+  );
 
-      {/* Sidebar */}
-      <div style={{ width: 260, borderRight: `1px solid ${t.border}`, background: t.card, display: "flex", flexDirection: "column", flexShrink: 0 }}>
-        <div style={{ padding: "20px 18px", borderBottom: `1px solid ${t.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: t.blueDim, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue, flexShrink: 0 }}>{Icons.bot}</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>AI Copilot</div>
-              <div style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>● Online</div>
-            </div>
-          </div>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: t.textSub, lineHeight: 1.5 }}>Ask me about incidents, users, IPs, transactions and attack types. I'll explain my reasoning.</p>
+  return (
+    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out", ["--ph" as string]: t.textMuted }}>
+
+      {/* Side panel (glass) */}
+      <div data-glass="" style={{ width: 340, background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: 20, boxShadow: t.shadow, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+        <div style={{ padding: "28px 24px 16px", textAlign: "center" as const }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>{botAvatar(100, true)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: t.text }}>AI Copilot</div>
+          <div style={{ display: "inline-block", margin: "8px 0 12px", background: t.greenDim, border: `1px solid ${t.greenBorder}`, borderRadius: 99, padding: "2px 12px", fontSize: 11, color: t.green, fontWeight: 600 }}>● Online</div>
+          <p style={{ margin: 0, fontSize: 13, color: t.textSub, lineHeight: 1.6 }}>Ask me about incidents, users, IPs, transactions and attack types. I'll explain my reasoning.</p>
         </div>
 
         {/* Suggested prompts */}
-        <div style={{ padding: "14px 12px", flex: 1, overflowY: "auto" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8, paddingLeft: 4 }}>Try asking…</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ padding: "8px 16px 14px", flex: 1, overflowY: "auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 10, paddingLeft: 4 }}>Try asking…</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {CHIPS.map(c => (
-              <button key={c} onClick={() => send(c)} disabled={busy} style={{ textAlign: "left" as const, background: "none", border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "9px 12px", fontSize: 12, color: t.textSub, cursor: busy ? "default" : "pointer", transition: "all 0.15s", lineHeight: 1.4 }}
-                onMouseEnter={e => { if (!busy) { e.currentTarget.style.background = t.blueDim; e.currentTarget.style.borderColor = t.blue; e.currentTarget.style.color = t.blue; } }}
-                onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.textSub; }}>
+              <button key={c} onClick={() => send(c)} disabled={busy} style={{ textAlign: "left" as const, background: t.btn, border: `1px solid ${t.btnBorder}`, boxShadow: t.raisedSm, borderRadius: 14, padding: "11px 14px", fontSize: 13, color: t.textSub, cursor: busy ? "default" : "pointer", transition: "all 0.15s", lineHeight: 1.4 }}
+                onMouseEnter={e => { if (!busy) { e.currentTarget.style.background = t.cardHover; e.currentTarget.style.color = t.link; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = t.btn; e.currentTarget.style.color = t.textSub; }}>
                 {c}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Model info */}
-        <div style={{ padding: "12px 16px", borderTop: `1px solid ${t.border}`, background: t.bg }}>
+        {/* Model info (inset) */}
+        <div style={{ margin: "0 16px 16px", padding: "14px 16px", background: t.input, boxShadow: t.inset, borderRadius: 16 }}>
           {[["Model", "Isolation Forest + SHAP · llama3.2:3b (local)"], ["Method", "Rule + ML hybrid"], ["Audit log", "Enabled"]].map(([k, v]) => (
-            <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
-              <span style={{ fontSize: 11, color: t.textMuted }}>{k}</span>
-              <span style={{ fontSize: 11, color: t.textSub, fontWeight: 500 }}>{v}</span>
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, padding: "4px 0" }}>
+              <span style={{ fontSize: 12, color: t.textMuted, flexShrink: 0 }}>{k}</span>
+              <span style={{ fontSize: 12, color: t.text, fontWeight: 600, textAlign: "right" as const }}>{v}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Chat area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div data-glass="" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: 20, boxShadow: t.shadow, overflow: "hidden" }}>
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 18 }}>
           {msgs.map((msg, i) => (
             <div key={msg.id} className={i === msgs.length - 1 ? "animate-slideIn" : ""} style={{ display: "flex", gap: 12, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
               {msg.role === "ai" && (
-                <div style={{ width: 32, height: 32, borderRadius: 9, background: t.blueDim, border: `1px solid ${t.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue, flexShrink: 0, marginTop: 2 }}>{Icons.bot}</div>
+                <div style={{ marginTop: 2 }}>{botAvatar(38)}</div>
               )}
-              <div style={{ maxWidth: "70%", background: msg.role === "user" ? t.blue : t.card, border: `1px solid ${msg.role === "user" ? t.blue : t.border}`, borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "4px 14px 14px 14px", padding: "12px 16px", boxShadow: t.shadow }}>
+              <div style={{ maxWidth: "70%", background: msg.role === "user" ? t.primary : t.glass, border: `1px solid ${msg.role === "user" ? t.primary : t.glassBorder}`, borderRadius: msg.role === "user" ? "18px 18px 6px 18px" : "6px 18px 18px 18px", padding: "12px 16px", boxShadow: msg.role === "user" ? t.primaryShadow : t.shadow }}>
                 {msg.thinking ? (
                   <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "2px 0" }}>
-                    {[0,1,2].map(j => <div key={j} style={{ width: 7, height: 7, borderRadius: "50%", background: t.blue, animation: `bounce 1.2s ease-in-out ${j*0.15}s infinite` }}/>)}
+                    {[0,1,2].map(j => <div key={j} style={{ width: 7, height: 7, borderRadius: "50%", background: t.link, animation: `bounce 1.2s ease-in-out ${j*0.15}s infinite` }}/>)}
                     <span style={{ fontSize: 12, color: t.textMuted, marginLeft: 4 }}>Analyzing…</span>
                   </div>
                 ) : (
@@ -179,7 +184,7 @@ export default function AICopilotPage({ t }: Props) {
                         </div>
                       )}
                     </div>
-                    <div style={{ fontSize: 10, color: msg.role === "user" ? "rgba(255,255,255,0.6)" : t.textMuted, marginTop: 6, textAlign: "right" as const }}>{msg.ts}</div>
+                    <div style={{ fontSize: 11, color: msg.role === "user" ? "rgba(255,255,255,0.9)" : t.textMuted, marginTop: 6, textAlign: "right" as const }}>{msg.ts}</div>
                   </>
                 )}
               </div>
@@ -189,11 +194,13 @@ export default function AICopilotPage({ t }: Props) {
         </div>
 
         {/* Input bar */}
-        <div style={{ padding: "14px 20px", borderTop: `1px solid ${t.border}`, background: t.card }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radius, padding: "8px 8px 8px 16px" }}>
+        <div style={{ padding: "14px 24px 18px" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: 18, padding: "8px 8px 8px 18px", outline: inputFocused ? `2px solid ${t.focus}` : "none", outlineOffset: 2 }}>
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
               placeholder="Ask the AI Copilot anything about your security environment…"
               rows={1}
@@ -203,9 +210,9 @@ export default function AICopilotPage({ t }: Props) {
             <button
               onClick={() => send(input)}
               disabled={busy || !input.trim()}
-              style={{ width: 36, height: 36, borderRadius: 9, background: input.trim() && !busy ? t.blue : t.border, border: "none", color: input.trim() && !busy ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !busy ? "pointer" : "default", transition: "all 0.15s", flexShrink: 0 }}>
+              style={{ width: 38, height: 38, borderRadius: "50%", boxShadow: input.trim() && !busy ? t.raisedSm : "none", background: input.trim() && !busy ? t.primary : t.border, border: "none", color: input.trim() && !busy ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !busy ? "pointer" : "default", transition: "all 0.15s", flexShrink: 0 }}>
               {busy
-                ? <div className="spinner" style={{ width: 14, height: 14, border: `2px solid ${t.textMuted}`, borderTopColor: t.blue, borderRadius: "50%" }}/>
+                ? <div className="spinner" style={{ width: 14, height: 14, border: `2px solid ${t.textMuted}`, borderTopColor: t.link, borderRadius: "50%" }}/>
                 : Icons.send}
             </button>
           </div>

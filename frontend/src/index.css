@@ -11,9 +11,35 @@ html, body, #root {
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: rgba(127,137,160,0.45); border-radius: 99px; }
 
 input, textarea, button, select { font-family: inherit; }
+
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+/* Top-nav tabs are full bar height: keep the ring but round it and sit it inside the bar. */
+nav > div:nth-child(2) > button:focus-visible { border-radius: 10px; outline-offset: -4px; }
+
+/* Login: hero is CSS-only and hidden below 960px; the form column is always shown. */
+.login-hero { display: none; flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+@media (min-width: 960px) { .login-hero { display: flex; } }
+.login-input:focus { outline: 2px solid var(--focus, currentColor) !important; outline-offset: 1px !important; }  /* !important: the inline outline:none would otherwise win */
+.login-input::placeholder { color: var(--ph); opacity: 1; }
+/* Tailwind's preflight dims placeholders to 50% of the text colour (2.9:1 on the light field). Use the muted text token where a page sets --ph, else 72% of the text colour. */
+input::placeholder, textarea::placeholder { color: var(--ph, color-mix(in srgb, currentColor 72%, transparent)); opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-spin     { animation: spin 40s linear infinite; }
+  .hero-spin-rev { animation: spin 60s linear infinite reverse; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeUp, .animate-fadeIn, .animate-slideIn, .live-dot { animation: none !important; }
+}
+
+@media print { .report-print-root { animation: none !important; } }
+
+/* Glass cards drop the blur for users who ask for reduced transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-glass] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+}
 
 @keyframes fadeUp   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }

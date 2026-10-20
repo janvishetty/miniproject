@@ -1,11 +1,11 @@
-import { type Theme, sevColor, statusColor } from "./theme";
+import { type Theme, sevColor, statusColor, fillOf } from "./theme";
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
 export function SevBadge({ level, t }: { level: string; t: Theme }) {
   const c = sevColor(level, t);
   return (
     <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 99, padding: "2px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const, display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.text, display: "inline-block", flexShrink: 0 }}/>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.fill, display: "inline-block", flexShrink: 0 }}/>
       {level.charAt(0).toUpperCase() + level.slice(1)}
     </span>
   );
@@ -30,7 +30,7 @@ export function sourceLabel(source: string | null | undefined) {
 }
 
 // ─── Button ──────────────────────────────────────────────────────────────────
-type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
+type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "success" | "successOutline" | "linkOutline";
 interface BtnProps {
   children: React.ReactNode;
   onClick?: () => void;
@@ -43,23 +43,31 @@ interface BtnProps {
 }
 export function Btn({ children, onClick, variant = "secondary", t, disabled, size = "md", fullWidth, icon }: BtnProps) {
   const styles: Record<BtnVariant, { bg: string; color: string; border: string; hoverBg: string }> = {
-    primary:   { bg: t.blue,    color: t.textInv,   border: t.blue,         hoverBg: t.blue + "cc" },
-    secondary: { bg: t.card,    color: t.text,       border: t.border,       hoverBg: t.cardHover },
+    primary:   { bg: t.primary, color: t.textInv,   border: t.primary,      hoverBg: t.primaryHover },
+    secondary: { bg: t.btn,     color: t.text,       border: t.btnBorder,    hoverBg: t.cardHover },
     ghost:     { bg: "transparent", color: t.textSub, border: "transparent", hoverBg: t.badge },
     danger:    { bg: t.redDim,  color: t.red,        border: t.redBorder,    hoverBg: t.red + "22" },
     success:   { bg: t.greenDim,color: t.green,      border: t.greenBorder,  hoverBg: t.green + "22" },
+    // Neutral raised surface, coloured text and 1px outline in the same colour
+    successOutline: { bg: t.btn, color: t.green, border: t.green, hoverBg: t.cardHover },
+    linkOutline:    { bg: t.btn, color: t.link,  border: t.link,  hoverBg: t.cardHover },
   };
   const pad = size === "sm" ? "6px 12px" : size === "lg" ? "12px 24px" : "8px 16px";
   const fs  = size === "sm" ? 12 : size === "lg" ? 15 : 13;
   const s = styles[variant];
+  // Neumorphic: raised at rest, pressed (inset) while the mouse is down. Ghost stays flat.
+  const raised = variant === "ghost" ? "none" : size === "sm" ? t.raisedSm : t.raised;
+  const pressed = variant === "ghost" ? "none" : t.inset;
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: t.radiusSm, padding: pad, fontSize: fs, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 6, width: fullWidth ? "100%" : undefined, justifyContent: fullWidth ? "center" : undefined, transition: "all 0.15s", whiteSpace: "nowrap" as const }}
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, boxShadow: raised, borderRadius: t.radiusSm, padding: pad, fontSize: fs, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 6, width: fullWidth ? "100%" : undefined, justifyContent: fullWidth ? "center" : undefined, transition: "all 0.15s", whiteSpace: "nowrap" as const }}
       onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = s.hoverBg; }}
-      onMouseLeave={e => { e.currentTarget.style.background = s.bg; }}
+      onMouseLeave={e => { e.currentTarget.style.background = s.bg; e.currentTarget.style.boxShadow = raised; }}
+      onMouseDown={e => { if (!disabled) e.currentTarget.style.boxShadow = pressed; }}
+      onMouseUp={e => { e.currentTarget.style.boxShadow = raised; }}
     >
       {icon && <span style={{ display: "flex", alignItems: "center" }}>{icon}</span>}
       {children}
@@ -73,11 +81,23 @@ export function Card({ children, t, onClick, hoverable, style }: { children: Rea
   return (
     <div
       onClick={onClick}
-      style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radius, boxShadow: t.shadow, cursor: onClick ? "pointer" : undefined, transition: "box-shadow 0.2s, transform 0.2s", ...style }}
+      data-glass=""
+      style={{ background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: t.radius, boxShadow: t.shadow, cursor: onClick ? "pointer" : undefined, transition: "box-shadow 0.2s, transform 0.2s", ...style }}
       onMouseEnter={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadowMd; e.currentTarget.style.transform = "translateY(-1px)"; } }}
       onMouseLeave={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadow; e.currentTarget.style.transform = "none"; } }}
     >
       {children}
+    </div>
+  );
+}
+
+// ─── Logo mark (nav + login) ─────────────────────────────────────────────────
+export function LogoMark({ t, size = 32 }: { t: Theme; size?: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 12, background: t.nav, boxShadow: t.raisedSm, border: `1px solid ${t.btnBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width={Math.round(size * 0.56)} height={Math.round(size * 0.56)} viewBox="0 0 24 24" fill="none" stroke={t.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
     </div>
   );
 }
@@ -96,27 +116,29 @@ export function SectionHead({ title, sub, t, action }: { title: string; sub?: st
 }
 
 // ─── Stat card ───────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, icon, color, t }: { label: string; value: string; sub?: string; icon: React.ReactNode; color: string; t: Theme }) {
+export function StatCard({ label, value, sub, icon, color, progress, t }: { label: string; value: string; sub?: string; icon: React.ReactNode; color: string; progress?: { value: number; max?: number; fill?: string }; t: Theme }) {
   return (
     <Card t={t} style={{ padding: "20px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", color }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: t.bg, boxShadow: t.raisedSm, display: "flex", alignItems: "center", justifyContent: "center", color }}>
           {icon}
         </div>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: t.text, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: t.text, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }}>{value}</div>
       <div style={{ fontSize: 13, fontWeight: 600, color: t.textSub, marginTop: 4 }}>{label}</div>
       {sub && <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>{sub}</div>}
+      {progress && <div style={{ marginTop: 12 }}><ProgressBar value={progress.value} max={progress.max} color={color} fill={progress.fill} t={t}/></div>}
     </Card>
   );
 }
 
 // ─── Progress bar ────────────────────────────────────────────────────────────
-export function ProgressBar({ value, max = 100, color, t }: { value: number; max?: number; color: string; t: Theme }) {
+export function ProgressBar({ value, max = 100, color, fill, t }: { value: number; max?: number; color: string; fill?: string; t: Theme }) {
   const pct = Math.min(100, (value / max) * 100);
+  const f = fillOf(color, t, fill);
   return (
-    <div style={{ height: 6, background: t.badge, borderRadius: 99, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
+    <div style={{ height: 6, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
+      <div className="print-keep" style={{ height: "100%", width: `${pct}%`, background: f.bg, boxShadow: `0 0 8px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
     </div>
   );
 }
@@ -125,7 +147,7 @@ export function ProgressBar({ value, max = 100, color, t }: { value: number; max
 export function EmptyState({ icon, title, sub, t }: { icon: React.ReactNode; title: string; sub: string; t: Theme }) {
   return (
     <div style={{ textAlign: "center", padding: "40px 24px" }}>
-      <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.badge, color: t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>{icon}</div>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.input, boxShadow: t.inset, color: t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>{icon}</div>
       <div style={{ fontSize: 15, fontWeight: 600, color: t.text, marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 13, color: t.textSub }}>{sub}</div>
     </div>

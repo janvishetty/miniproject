@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as api from "./api";
-import { type Theme, sevColor } from "./theme";
+import type { Theme } from "./theme";
 import { Card, Btn, SevBadge, StatusBadge, EmptyState, Icons, sourceLabel } from "./ui";
 import { Skeleton, ImpactBars, hasImpacts } from "./charts";
 import { runReportJob } from "./reportJob";
@@ -34,6 +34,15 @@ const PRINT_CSS = `@media print {
   #root > div > div[style*="position: fixed"] { display: none !important; }
   .report-print-root { padding: 0 !important; overflow: visible !important; }
   .report-aside { position: static !important; }
+  /* Glass/neumorphic off, white page, dark text, in both themes. Only .print-keep elements (bar fills, timeline dots) keep their colour. */
+  html, body, #root > div { background: #fff !important; background-color: #fff !important; background-image: none !important; color: #111827 !important; }
+  .report-print-root *:not(.print-keep) { background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: #111827 !important; border-color: #9ca3af !important; }
+  .print-keep { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }
+  /* One plain column in any page orientation */
+  .report-container { max-width: none !important; }
+  .report-row { display: block !important; }
+  .report-row > main, .report-row > aside { width: 100% !important; max-width: 100% !important; }
+  .report-row > aside { margin-top: 16px; }
 }`;
 
 type RepState =
@@ -175,7 +184,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
       </div>
     );
   } else if (rep.status === "error") {
-    content = retry(rep.message, () => setRepTry(n => n + 1));
+    content = <div style={{ background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 8, padding: "10px 14px" }}>{retry(rep.message, () => setRepTry(n => n + 1))}</div>;
   } else if (rep.status === "gone") {
     content = <Card t={t}><EmptyState icon={Icons.incidents} title={`${id} is not in the current pipeline run`} sub="The data may have been reloaded since this link was made." t={t}/></Card>;
   } else if (rep.status === "missing") {
@@ -200,10 +209,10 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
     content = (
       <>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-          <div style={{ flex: "1 1 360px", minWidth: 0, borderLeft: `3px solid ${sevColor(r.sev, t).text}`, paddingLeft: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
+          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-              <span style={{ ...mono, fontSize: 13, color: t.blue, fontWeight: 500 }}>{r.id}</span>
+              <span style={{ ...mono, fontSize: 13, color: t.link, fontWeight: 500 }}>{r.id}</span>
               <SevBadge level={r.sev} t={t}/>
               <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{sourceLabel(r.source)}</span>
               <span style={{ background: verified ? t.greenDim : t.amberDim, color: verified ? t.green : t.amber, border: `1px solid ${verified ? t.greenBorder : t.amberBorder}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{verified ? "Verified" : "Unverified"}</span>
@@ -211,7 +220,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
             </div>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: t.text, lineHeight: 1.3 }}>{r.title}</h1>
           </div>
-          <div className="no-print"><Btn t={t} variant="secondary" icon={Icons.download} onClick={() => window.print()}>Print / Save as PDF</Btn></div>
+          <div className="no-print" style={{ marginLeft: "auto" }}><Btn t={t} variant="secondary" icon={Icons.download} onClick={() => window.print()}>Print / Save as PDF</Btn></div>
         </div>
 
         {/* Verification banners */}
@@ -222,15 +231,15 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
           </div>
         )}
         {r.source === "template" && (
-          <div style={{ background: t.blueDim, border: `1px solid ${t.blueBorder}`, borderRadius: t.radiusSm, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: t.textSub }}>
+          <div style={{ background: t.linkDim, border: `1px solid ${t.linkBorder}`, borderRadius: t.radiusSm, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: t.textSub }}>
             This report was built directly from the incident data (verified), not written by the AI model.
           </div>
         )}
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
+        <div className="report-row" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
           {/* Main column */}
-          <main style={{ flex: "1 1 520px", maxWidth: 760, minWidth: 0 }}>
-            <Card t={t} style={{ padding: "16px 20px", marginBottom: 16, background: t.blueDim, border: `1px solid ${t.blueBorder}` }}>
+          <main style={{ flex: "1 1 520px", minWidth: 0 }}>
+            <Card t={t} style={{ padding: "16px 20px", marginBottom: 16, background: t.linkDim, border: `1px solid ${t.linkBorder}` }}>
               <div style={h}>Executive summary</div>
               {r.summary ? <p style={{ margin: 0, ...body, color: t.text }}>{r.summary}</p> : none()}
             </Card>
@@ -267,11 +276,11 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
                 {inc.timeline.map((e, i) => (
                   <div key={i} style={{ display: "flex", gap: 14 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: e.color ?? t.textMuted, marginTop: 3 }}/>
+                      <div className="print-keep" style={{ width: 10, height: 10, borderRadius: "50%", background: e.color ?? t.textMuted, marginTop: 3 }}/>
                       {i < inc.timeline.length - 1 && <div style={{ width: 2, flex: 1, background: t.border, margin: "2px 0" }}/>}
                     </div>
                     <div style={{ paddingBottom: 16 }}>
-                      <div style={{ ...mono, fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{e.time} · <span style={{ color: e.color ?? t.textMuted, fontWeight: 600 }}>{e.actor}</span></div>
+                      <div style={{ ...mono, fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{e.time} · <span style={{ color: t.textSub, fontWeight: 500 }}>{e.actor}</span></div>
                       <div style={{ fontSize: 13, color: t.textSub, lineHeight: 1.4 }}>{e.msg}</div>
                     </div>
                   </div>
@@ -313,7 +322,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
           </main>
 
           {/* At a glance */}
-          <aside className="report-aside" style={{ flex: "0 1 300px", minWidth: 260, position: "sticky", top: 0, alignSelf: "flex-start" }}>
+          <aside className="report-aside" style={{ flex: "0 0 340px", maxWidth: "100%", position: "sticky", top: 0, alignSelf: "flex-start" }}>
             <Card t={t} style={{ padding: "16px 20px" }}>
               <div style={h}>At a glance</div>
               {glance("Severity", <SevBadge level={r.sev} t={t}/>)}
@@ -351,8 +360,10 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
   return (
     <div className="report-print-root" style={{ padding: "24px 28px", overflowY: "auto", flex: 1, minHeight: 0, animation: "fadeUp 0.25s ease-out" }}>
       <style>{PRINT_CSS}</style>
-      {backBtn}
-      {content}
+      <div className="report-container" style={{ maxWidth: 1240, margin: "0 auto" }}>
+        {backBtn}
+        {content}
+      </div>
     </div>
   );
 }

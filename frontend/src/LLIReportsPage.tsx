@@ -56,7 +56,7 @@ export default function LLIReportsPage({ t, showToast, onOpenIncident }: Props) 
             </div>
           )}
           {!loading && error && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 8, padding: "10px 14px" }}>
               <span style={{ fontSize: 13, color: t.red }}>{error}</span>
               <Btn t={t} variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>Retry</Btn>
             </div>
@@ -71,13 +71,13 @@ export default function LLIReportsPage({ t, showToast, onOpenIncident }: Props) 
               <div key={r.id} role="button" tabIndex={0} aria-label={`Open report ${r.id}: ${r.title}`}
                 onClick={() => openReportHash(r.id)}
                 onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openReportHash(r.id); } }}
-                onFocus={e => { if (e.currentTarget.matches(":focus-visible")) { e.currentTarget.style.outline = `2px solid ${t.blue}`; e.currentTarget.style.outlineOffset = "2px"; } }}
+                onFocus={e => { if (e.currentTarget.matches(":focus-visible")) { e.currentTarget.style.outline = `2px solid ${t.focus}`; e.currentTarget.style.outlineOffset = "2px"; } }}
                 onBlur={e => { e.currentTarget.style.outline = "none"; }}
                 style={{ borderRadius: t.radius, cursor: "pointer", outline: "none" }}>
               <Card t={t} hoverable style={{ padding: "18px 20px", height: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.blue, fontWeight: 500, display: "block", marginBottom: 4 }}>{r.id}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.link, fontWeight: 500, display: "block", marginBottom: 4 }}>{r.id}</span>
                     <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{sourceLabel(r.source)}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
