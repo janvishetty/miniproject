@@ -16,6 +16,8 @@ html, body, #root {
 input, textarea, button, select { font-family: inherit; }
 
 button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+/* Top-nav tabs are full bar height: keep the ring but round it and sit it inside the bar. */
+nav > div:nth-child(2) > button:focus-visible { border-radius: 10px; outline-offset: -4px; }
 
 /* Login: hero is CSS-only and hidden below 960px; the form column is always shown. */
 .login-hero { display: none; flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }

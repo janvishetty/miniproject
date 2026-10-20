@@ -212,7 +212,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
           <div style={{ flex: "1 1 360px", minWidth: 0, borderLeft: `3px solid ${sevColor(r.sev, t).text}`, paddingLeft: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-              <span style={{ ...mono, fontSize: 13, color: t.blue, fontWeight: 500 }}>{r.id}</span>
+              <span style={{ ...mono, fontSize: 13, color: t.link, fontWeight: 500 }}>{r.id}</span>
               <SevBadge level={r.sev} t={t}/>
               <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{sourceLabel(r.source)}</span>
               <span style={{ background: verified ? t.greenDim : t.amberDim, color: verified ? t.green : t.amber, border: `1px solid ${verified ? t.greenBorder : t.amberBorder}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{verified ? "Verified" : "Unverified"}</span>
@@ -231,7 +231,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
           </div>
         )}
         {r.source === "template" && (
-          <div style={{ background: t.blueDim, border: `1px solid ${t.blueBorder}`, borderRadius: t.radiusSm, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: t.textSub }}>
+          <div style={{ background: t.linkDim, border: `1px solid ${t.linkBorder}`, borderRadius: t.radiusSm, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: t.textSub }}>
             This report was built directly from the incident data (verified), not written by the AI model.
           </div>
         )}

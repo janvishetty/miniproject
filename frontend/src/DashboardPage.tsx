@@ -12,9 +12,9 @@ function nodeColor(risk: string, t: Theme) {
 }
 
 function streamTypeColor(type: string, t: Theme) {
-  if (type === "alert" || type === "block") return t.red;
-  if (type === "warn")  return t.amber;
-  return t.green;
+  if (type === "alert" || type === "block") return t.redFill;
+  if (type === "warn")  return t.amberFill;
+  return t.greenFill;
 }
 
 interface Props { t: Theme; onNavigate: (tab: string) => void; }
@@ -36,7 +36,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
     return (
       <div style={{ padding: "24px 28px", flex: 1 }}>
         {error
-          ? <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          ? <div style={{ display: "flex", alignItems: "center", gap: 12, background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 8, padding: "10px 14px" }}>
               <span style={{ fontSize: 13, color: t.red }}>{error}</span>
               <Btn t={t} variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>Retry</Btn>
             </div>
@@ -71,7 +71,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         <StatCard label="Active Incidents"    value={String(data.active_incidents)} sub={`${data.critical_open} critical need action`} icon={Icons.alert}    color={t.red}   t={t}/>
         <StatCard label="Platform Risk Score" value={`${data.platform_risk_score}/100`} sub="Severity-weighted mean risk of open incidents" icon={Icons.shield}  color={t.amber} t={t}/>
-        <StatCard label="Events Analysed"     value={(data.events_analysed ?? 0).toLocaleString()} sub={data.events_analysed_sub ?? "Scored by the model"} icon={Icons.activity} color={t.blue} t={t}/>
+        <StatCard label="Events Analysed"     value={(data.events_analysed ?? 0).toLocaleString()} sub={data.events_analysed_sub ?? "Scored by the model"} icon={Icons.activity} color={t.link} t={t}/>
         <StatCard label="Avg Response Time"   value="—" sub="No response data yet" icon={Icons.clock} color={t.green} t={t}/>
       </div>
 
@@ -113,7 +113,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
             </Card>
             <Card t={t} style={{ padding: "20px 24px" }}>
               <SectionHead title="By Attack Type" sub="Open incidents" t={t}/>
-              <HBars rows={Object.entries(data.by_type ?? {}).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} color={t.blue} t={t} empty="No open incidents in this run."/>
+              <HBars rows={Object.entries(data.by_type ?? {}).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} color={t.link} fill={t.accentGrad} t={t} empty="No open incidents in this run."/>
             </Card>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
               onMouseEnter={e => (e.currentTarget.style.background = t.bg)}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               onClick={() => onNavigate("INCIDENTS")}>
-              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: t.blue, fontWeight: 500 }}>{inc.id}</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: t.link, fontWeight: 500 }}>{inc.id}</span>
               <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{inc.title}</span>
               <span><SevBadge level={inc.sev} t={t}/></span>
               <span style={{ fontSize: 12, color: inc.status === "OPEN" ? t.red : inc.status === "INVESTIGATING" ? t.amber : inc.status === "CONTAINED" ? t.medium : t.green, fontWeight: 600 }}>{inc.status.charAt(0) + inc.status.slice(1).toLowerCase()}</span>

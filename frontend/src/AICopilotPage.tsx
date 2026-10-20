@@ -48,6 +48,7 @@ export default function AICopilotPage({ t }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const welcomed = useRef(false);
@@ -194,10 +195,12 @@ export default function AICopilotPage({ t }: Props) {
 
         {/* Input bar */}
         <div style={{ padding: "14px 24px 18px" }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: 18, padding: "8px 8px 8px 18px" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: 18, padding: "8px 8px 8px 18px", outline: inputFocused ? `2px solid ${t.focus}` : "none", outlineOffset: 2 }}>
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
               placeholder="Ask the AI Copilot anything about your security environment…"
               rows={1}
