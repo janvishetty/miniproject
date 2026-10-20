@@ -105,7 +105,7 @@ export type EventRow = {
 };
 
 export type Report = {
-  id: string; title: string; sev: Severity; summary: string | null; five_ws: Record<string, string> | null;
+  id: string; title: string; sev: Severity; summary: string | null; five_ws: Record<string, string | string[]> | null;
   mitre: string[]; containment_actions: string[]; investigation_steps: string[];
   source: string | null; grounded: boolean | null; unverified: unknown[]; created_at: string | null;
 };

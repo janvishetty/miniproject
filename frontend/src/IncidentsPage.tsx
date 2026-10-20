@@ -4,29 +4,21 @@ import { Card, SevBadge, StatusBadge, Btn, ProgressBar, EmptyState, Icons, sourc
 import { sevColor } from "./theme";
 import { Skeleton, ImpactBars, hasImpacts } from "./charts";
 import * as api from "./api";
+import { runReportJob } from "./reportJob";
 
 const PAGE_SIZE = 20;
-const REPORT_POLL_MS = 2_000;
-const REPORT_POLL_MAX_MS = 10 * 60_000;
-const REPORT_POLL_MAX_FAILS = 3;
-const REPORT_ERRORS: Record<string, string> = {
-  ai_unavailable: "AI service unavailable. Start Ollama.",
-  unverified: "Report could not be verified",
-  timeout: "Report generation timed out",
-  stale_run: "Data changed, reload the page",
-};
 
 type ConfirmAction = { label: string; message: string; variant: "danger" | "success" | "primary" } | null;
 
-interface Props { t: Theme; showToast: (msg: string, type?: string) => void; onChanged?: () => void; role?: string; }
+interface Props { t: Theme; showToast: (msg: string, type?: string) => void; onChanged?: () => void; role?: string; initialId?: string | null; onViewReport?: (id: string) => void; }
 
-export default function IncidentsPage({ t, showToast, onChanged, role = "" }: Props) {
+export default function IncidentsPage({ t, showToast, onChanged, role = "", initialId = null, onViewReport }: Props) {
   const [items, setItems] = useState<api.IncidentItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [detail, setDetail] = useState<api.IncidentDetail | null>(null);
   const [detailError, setDetailError] = useState("");
   const [report, setReport] = useState<api.Report | null>(null);
@@ -143,32 +135,11 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "" }: Pr
     }
     const run = ++genRun.current;
     const alive = () => run === genRun.current;
-    const started = Date.now();
     setGenId(id);
     try {
-      const job = await api.startReport(id);
-      let cur = job;
-      let fails = 0;
-      while (cur.status === "running") {
-        if (Date.now() - started > REPORT_POLL_MAX_MS) { showToast(REPORT_ERRORS.timeout, "error"); return; }
-        await new Promise(r => setTimeout(r, REPORT_POLL_MS));
-        if (!alive()) return;
-        try {
-          cur = await api.getReportJob(job.job_id);
-          fails = 0;
-        } catch (e) {
-          // Tolerate short network/timeout blips (status 0); anything else, or too many in a row, gives up.
-          if (!alive()) return;
-          if (e instanceof api.ApiError && e.status === 0 && ++fails < REPORT_POLL_MAX_FAILS) continue;
-          throw e;
-        }
-        if (!alive()) return;
-      }
-      if (cur.status === "failed") {
-        const e = cur.error;
-        showToast((e && REPORT_ERRORS[e.code]) || e?.message || "Report generation failed", "error");
-        return;
-      }
+      const out = await runReportJob(id, alive);
+      if (out.kind === "cancelled") return;
+      if (out.kind === "failed") { showToast(out.message, "error"); return; }
       setReport(await api.getReport(id));
       if (!alive()) return;
       setReloadKey(k => k + 1);
@@ -289,6 +260,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "" }: Pr
               )}
               <Btn t={t} variant="danger"  onClick={() => showToast(`Escalation noted for ${detail.id}`, "warning")}>Escalate</Btn>
               <Btn t={t} variant="ghost"   disabled={!!genId} onClick={generateReport}>{genId ? `Generating… (${genSecs}s)` : "Generate Report"}</Btn>
+              {onViewReport && (detail.report || report) && <Btn t={t} variant="secondary" icon={Icons.file} onClick={() => onViewReport(detail.id)}>View full report</Btn>}
             </div>
 
             {/* Meta grid */}
