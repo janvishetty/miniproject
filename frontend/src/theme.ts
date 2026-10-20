@@ -13,7 +13,7 @@ export const LIGHT = {
   // Text
   text:      "#1F2937",
   textSub:   "#3F4856",
-  textMuted: "#4B5565",
+  textMuted: "#465163",
   textInv:   "#ffffff",
 
   // Brand / accents
@@ -34,6 +34,18 @@ export const LIGHT = {
   medium:    "#1D4ED8",   // new: "medium" severity / contained status (was t.blue)
   mediumDim: "#DCE7FD",
   mediumBorder:"#9DB8F2",
+  // FILL tokens: for bars, rings and dots. The text colours above are tuned for 4.5:1 text and look muddy as fills.
+  // Light fills target >= 3:1 against the inset track (red 3.7, amber 3.2, medium 4.1, green 3.2).
+  redFill:   "#E11D48",
+  amberFill: "#C2640A",
+  mediumFill:"#2563EB",
+  greenFill: "#04916A",
+  // Do NOT pass t.accent as a bar fill in light (2.0:1 against the track): use accentGrad or a fill token there.
+  accentGrad:"linear-gradient(90deg, #334155, #0E7490)",   // neutral accent bars: slate to cyan, not emerald (indigo is dark-theme only)
+  // Neutral accent for incident ids, links, selected rows. Emerald (t.blue / t.primary / t.green) is kept for the primary action, active tab and success.
+  link:      "#334155",
+  linkDim:   "#E2E8F0",
+  linkBorder:"#94A3B8",
   accent:    "#10B981",   // new: accent as fill
   primary:   "#047857",   // new: primary button / user bubble, white text
   primaryHover:"#065F46",
@@ -50,8 +62,8 @@ export const LIGHT = {
   radiusLg:  "16px",
 
   // Glass + neumorphism (new)
-  glass:       "rgba(255,255,255,0.42)",
-  glassBorder: "rgba(255,255,255,0.78)",
+  glass:       "rgba(255,255,255,0.55)",
+  glassBorder: "rgba(255,255,255,0.9)",
   blur:        "blur(20px)",
   raised:      "8px 8px 16px #A3B1C6, -8px -8px 16px rgba(255,255,255,0.9)",
   raisedSm:    "4px 4px 8px #A3B1C6, -4px -4px 8px rgba(255,255,255,0.9)",
@@ -64,7 +76,7 @@ export const LIGHT = {
   heroGlow:    "rgba(16,185,129,0.22)",
   heroDash:    "rgba(13,148,136,0.4)",
   heroConic:   "conic-gradient(from 0deg, rgba(16,185,129,0) 0deg, #10B981 140deg, #0891B2 300deg, rgba(8,145,178,0) 360deg)",
-  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(16,185,129,0.34), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(59,130,246,0.30), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(16,185,129,0.30), transparent 60%)",
+  ambient:     "radial-gradient(1100px 760px at 8% -8%, rgba(16,185,129,0.34), transparent 60%), radial-gradient(900px 640px at 96% 4%, rgba(59,130,246,0.30), transparent 60%), radial-gradient(1100px 800px at 56% 112%, rgba(14,165,233,0.32), transparent 60%), radial-gradient(900px 700px at 0% 100%, rgba(99,102,241,0.16), transparent 60%), radial-gradient(800px 600px at 100% 96%, rgba(59,130,246,0.18), transparent 60%)",
 };
 
 export const DARK: typeof LIGHT = {
@@ -94,11 +106,19 @@ export const DARK: typeof LIGHT = {
   red:       "#FB7185",
   redDim:    "#2B1320",
   redBorder: "#6B2437",
-  purple:    "#A78BFA",
+  purple:    "#B4A0FB",
   purpleDim: "#221B3F",
   medium:    "#60A5FA",
   mediumDim: "#12233D",
   mediumBorder:"#2A5594",
+  redFill:   "#FB7185",
+  amberFill: "#FBBF24",
+  mediumFill:"#60A5FA",
+  greenFill: "#34D399",
+  accentGrad:"linear-gradient(90deg, #6366F1, #22D3EE)",
+  link:      "#8E98F9",
+  linkDim:   "#1C1F45",
+  linkBorder:"#3F4290",
   accent:    "#6366F1",
   primary:   "#4F46E5",
   primaryHover:"#4338CA",
@@ -127,17 +147,27 @@ export const DARK: typeof LIGHT = {
   heroGlow:    "rgba(99,102,241,0.25)",
   heroDash:    "rgba(34,211,238,0.4)",
   heroConic:   "conic-gradient(from 0deg, rgba(99,102,241,0) 0deg, #6366F1 140deg, #22D3EE 300deg, rgba(34,211,238,0) 360deg)",
-  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(99,102,241,0.30), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(34,211,238,0.18), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(139,92,246,0.24), transparent 60%)",
+  ambient:     "radial-gradient(1100px 760px at 8% -8%, rgba(99,102,241,0.30), transparent 60%), radial-gradient(900px 640px at 96% 4%, rgba(34,211,238,0.18), transparent 60%), radial-gradient(1100px 800px at 62% 112%, rgba(139,92,246,0.26), transparent 60%), radial-gradient(900px 700px at 2% 100%, rgba(99,102,241,0.20), transparent 60%), radial-gradient(800px 600px at 100% 96%, rgba(34,211,238,0.14), transparent 60%)",
 };
 
 export type Theme = typeof LIGHT;
 
 export function sevColor(sev: string, t: Theme) {
   const s = sev.toLowerCase();
-  if (s === "critical") return { text: t.red,   bg: t.redDim,    border: t.redBorder   };
-  if (s === "high")     return { text: t.amber,  bg: t.amberDim,  border: t.amberBorder };
-  if (s === "medium")   return { text: t.medium, bg: t.mediumDim, border: t.mediumBorder };
-  return                       { text: t.green,  bg: t.greenDim,  border: t.greenBorder };
+  if (s === "critical") return { text: t.red,   bg: t.redDim,    border: t.redBorder,    fill: t.redFill    };
+  if (s === "high")     return { text: t.amber,  bg: t.amberDim,  border: t.amberBorder,  fill: t.amberFill  };
+  if (s === "medium")   return { text: t.medium, bg: t.mediumDim, border: t.mediumBorder, fill: t.mediumFill };
+  return                       { text: t.green,  bg: t.greenDim,  border: t.greenBorder,  fill: t.greenFill  };
+}
+
+// Bars receive a status TEXT colour from their callers; this maps it to the matching FILL (plus a soft glow) so
+// bars are never drawn in dark text colours. In the light theme t.blue and t.green are the same hex, so green wins;
+// accent bars should pass t.link (-> accent gradient). Unknown colours pass through unchanged.
+// Pass `fill` (e.g. t.accent, t.redFill) to bypass the mapping.
+export function fillOf(color: string, t: Theme, fill?: string): { bg: string; glow: string } {
+  const hit = fill !== undefined ? undefined : ([[t.red, t.redFill], [t.amber, t.amberFill], [t.medium, t.mediumFill], [t.green, t.greenFill], [t.link, t.accentGrad], [t.blue, t.accentGrad]] as [string, string][]).find(([k]) => k === color);
+  const bg = fill ?? (hit ? hit[1] : color);
+  return { bg, glow: (bg.startsWith("#") ? bg : t.link) + "66" };
 }
 
 export function statusColor(s: string, t: Theme) {

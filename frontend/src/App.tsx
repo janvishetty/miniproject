@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { LIGHT, DARK } from "./theme";
-import { Icons } from "./ui";
+import { Icons, LogoMark } from "./ui";
 import LoginPage, { type UserProfile } from "./LoginPage";
 import DashboardPage from "./DashboardPage";
 import IncidentsPage from "./IncidentsPage";
@@ -230,11 +230,7 @@ export default function App() {
 
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingRight: 28, marginRight: 8 }}>
-          <div style={{ width: 32, height: 32, background: t.brandGrad, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
+          <LogoMark t={t} size={32}/>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: t.text, lineHeight: 1.1 }}>Vantix</div>
             <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 500 }}>FinTech Security Platform</div>

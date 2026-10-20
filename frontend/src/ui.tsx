@@ -1,11 +1,11 @@
-import { type Theme, sevColor, statusColor } from "./theme";
+import { type Theme, sevColor, statusColor, fillOf } from "./theme";
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
 export function SevBadge({ level, t }: { level: string; t: Theme }) {
   const c = sevColor(level, t);
   return (
     <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 99, padding: "2px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const, display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.text, display: "inline-block", flexShrink: 0 }}/>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.fill, display: "inline-block", flexShrink: 0 }}/>
       {level.charAt(0).toUpperCase() + level.slice(1)}
     </span>
   );
@@ -129,11 +129,12 @@ export function StatCard({ label, value, sub, icon, color, t }: { label: string;
 }
 
 // ─── Progress bar ────────────────────────────────────────────────────────────
-export function ProgressBar({ value, max = 100, color, t }: { value: number; max?: number; color: string; t: Theme }) {
+export function ProgressBar({ value, max = 100, color, fill, t }: { value: number; max?: number; color: string; fill?: string; t: Theme }) {
   const pct = Math.min(100, (value / max) * 100);
+  const f = fillOf(color, t, fill);
   return (
     <div style={{ height: 6, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
+      <div className="print-keep" style={{ height: "100%", width: `${pct}%`, background: f.bg, boxShadow: `0 0 10px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
     </div>
   );
 }
