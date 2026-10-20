@@ -179,7 +179,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 {opts.map(o => {
                   const on = current === o;
                   return (
-                    <button key={o} aria-pressed={on} onClick={() => changeFilter(setter, o)} style={{ minHeight: 32, fontSize: 12, fontWeight: on ? 700 : 600, padding: "0 14px", borderRadius: 99, border: `1px solid ${on ? t.linkBorder : t.btnBorder}`, background: on ? t.input : t.btn, boxShadow: on ? `${t.inset}, 0 0 0 1px ${t.linkBorder}, 0 0 12px ${t.link}40` : t.raisedSm, color: on ? t.link : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
+                    <button key={o} aria-pressed={on} onClick={() => changeFilter(setter, o)} style={{ minHeight: 32, fontSize: 12, fontWeight: on ? 700 : 600, padding: "0 14px", borderRadius: 99, border: `1.5px solid ${on ? t.selBorder : t.btnBorder}`, background: on ? t.input : t.btn, boxShadow: on ? `${t.inset}, ${t.selGlow}` : t.raisedSm, color: on ? t.selText : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
                       onMouseEnter={e => { if (!on) e.currentTarget.style.background = t.cardHover; }}
                       onMouseLeave={e => { if (!on) e.currentTarget.style.background = t.btn; }}>{g === 1 && o === "All" ? "Any status" : o}</button>
                   );
@@ -207,7 +207,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(inc.id); } }}
                 onFocus={e => { if (e.currentTarget.matches(":focus-visible")) { e.currentTarget.style.outline = `2px solid ${t.focus}`; e.currentTarget.style.outlineOffset = "2px"; } }}
                 onBlur={e => { e.currentTarget.style.outline = "none"; }}
-                style={{ padding: "14px 16px", borderRadius: 16, cursor: "pointer", background: sel ? t.input : t.btn, border: `1px solid ${sel ? t.linkBorder : t.btnBorder}`, boxShadow: sel ? `${t.inset}, 0 0 16px ${t.link}40` : t.raisedSm, transition: "background 0.15s" }}
+                style={{ padding: "14px 16px", borderRadius: 16, cursor: "pointer", background: sel ? t.input : t.btn, border: `1.5px solid ${sel ? t.selBorder : t.btnBorder}`, boxShadow: sel ? `${t.inset}, ${t.selGlow}` : t.raisedSm, transition: "background 0.15s" }}
                 onMouseEnter={e => { if (!sel) e.currentTarget.style.background = t.cardHover; }}
                 onMouseLeave={e => { if (!sel) e.currentTarget.style.background = t.btn; }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>

@@ -62,6 +62,10 @@ export const LIGHT = {
   radiusLg:  "16px",
 
   // Glass + neumorphism (new)
+  // Selection highlight (selected filter chip, selected list row): the ring is decorative, selection is also conveyed by the inset surface, weight and aria-pressed
+  selBorder:   "rgba(16,185,129,0.65)",
+  selGlow:     "0 0 14px rgba(16,185,129,0.30)",
+  selText:     "#065F46",
   glass:       "rgba(255,255,255,0.46)",
   glassBorder: "rgba(255,255,255,0.9)",
   blur:        "blur(20px)",
@@ -133,6 +137,9 @@ export const DARK: typeof LIGHT = {
   radiusSm:  "8px",
   radiusLg:  "16px",
 
+  selBorder:   "rgba(142,152,249,0.65)",
+  selGlow:     "0 0 14px rgba(142,152,249,0.30)",
+  selText:     "#8E98F9",
   glass:       "rgba(255,255,255,0.04)",
   glassBorder: "rgba(255,255,255,0.08)",
   blur:        "blur(20px)",
