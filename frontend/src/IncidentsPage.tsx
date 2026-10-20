@@ -204,7 +204,11 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
           {!listLoading && items.map(inc => {
             const sel = selectedId === inc.id;
             return (
-              <div key={inc.id} onClick={() => select(inc.id)} style={{ padding: "14px 16px", borderRadius: 16, cursor: "pointer", background: sel ? t.input : t.btn, border: `1px solid ${sel ? t.linkBorder : t.btnBorder}`, boxShadow: sel ? `${t.inset}, 0 0 16px ${t.link}40` : t.raisedSm, transition: "background 0.15s" }}
+              <div key={inc.id} role="button" tabIndex={0} onClick={() => select(inc.id)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(inc.id); } }}
+                onFocus={e => { if (e.currentTarget.matches(":focus-visible")) { e.currentTarget.style.outline = `2px solid ${t.focus}`; e.currentTarget.style.outlineOffset = "2px"; } }}
+                onBlur={e => { e.currentTarget.style.outline = "none"; }}
+                style={{ padding: "14px 16px", borderRadius: 16, cursor: "pointer", background: sel ? t.input : t.btn, border: `1px solid ${sel ? t.linkBorder : t.btnBorder}`, boxShadow: sel ? `${t.inset}, 0 0 16px ${t.link}40` : t.raisedSm, transition: "background 0.15s" }}
                 onMouseEnter={e => { if (!sel) e.currentTarget.style.background = t.cardHover; }}
                 onMouseLeave={e => { if (!sel) e.currentTarget.style.background = t.btn; }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
