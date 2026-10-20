@@ -17,6 +17,19 @@ input, textarea, button, select { font-family: inherit; }
 
 button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
 
+/* Login: hero is CSS-only and hidden below 960px; the form column is always shown. */
+.login-hero { display: none; flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+@media (min-width: 960px) { .login-hero { display: flex; } }
+.login-input:focus { outline: 2px solid var(--focus, currentColor) !important; outline-offset: 1px !important; }  /* !important: the inline outline:none would otherwise win */
+.login-input::placeholder { color: var(--ph); opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-spin     { animation: spin 40s linear infinite; }
+  .hero-spin-rev { animation: spin 60s linear infinite reverse; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeUp, .animate-fadeIn, .animate-slideIn, .live-dot { animation: none !important; }
+}
+
 /* Glass cards drop the blur for users who ask for reduced transparency. */
 @media (prefers-reduced-transparency: reduce) {
   [data-glass] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

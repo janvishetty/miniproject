@@ -88,6 +88,17 @@ export function Card({ children, t, onClick, hoverable, style }: { children: Rea
   );
 }
 
+// ─── Logo mark (nav + login) ─────────────────────────────────────────────────
+export function LogoMark({ t, size = 32 }: { t: Theme; size?: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 12, background: t.nav, boxShadow: t.raisedSm, border: `1px solid ${t.btnBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width={Math.round(size * 0.56)} height={Math.round(size * 0.56)} viewBox="0 0 24 24" fill="none" stroke={t.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+  );
+}
+
 // ─── Section heading ─────────────────────────────────────────────────────────
 export function SectionHead({ title, sub, t, action }: { title: string; sub?: string; t: Theme; action?: React.ReactNode }) {
   return (

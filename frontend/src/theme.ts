@@ -13,7 +13,7 @@ export const LIGHT = {
   // Text
   text:      "#1F2937",
   textSub:   "#3F4856",
-  textMuted: "#566070",
+  textMuted: "#4B5565",
   textInv:   "#ffffff",
 
   // Brand / accents
@@ -55,10 +55,16 @@ export const LIGHT = {
   blur:        "blur(20px)",
   raised:      "8px 8px 16px #A3B1C6, -8px -8px 16px rgba(255,255,255,0.9)",
   raisedSm:    "4px 4px 8px #A3B1C6, -4px -4px 8px rgba(255,255,255,0.9)",
-  inset:       "inset 8px 8px 16px #A3B1C6, inset -8px -8px 16px rgba(255,255,255,0.9)",
+  inset:       "inset 6px 6px 12px #A3B1C6, inset -6px -6px 12px rgba(255,255,255,0.9)",
   btn:         "#E0E5EC",
   btnBorder:   "rgba(255,255,255,0.6)",
-  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(16,185,129,0.20), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(59,130,246,0.16), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(16,185,129,0.12), transparent 60%)",
+  primaryShadow:"6px 8px 18px rgba(4,120,87,0.35), -4px -4px 10px rgba(255,255,255,0.8)",
+  cyan:        "#0891B2",   // decorative only (dots, rings)
+  heroRing:    "rgba(16,185,129,0.4)",
+  heroGlow:    "rgba(16,185,129,0.22)",
+  heroDash:    "rgba(13,148,136,0.4)",
+  heroConic:   "conic-gradient(from 0deg, rgba(16,185,129,0) 0deg, #10B981 140deg, #0891B2 300deg, rgba(8,145,178,0) 360deg)",
+  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(16,185,129,0.34), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(59,130,246,0.30), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(16,185,129,0.30), transparent 60%)",
 };
 
 export const DARK: typeof LIGHT = {
@@ -71,11 +77,11 @@ export const DARK: typeof LIGHT = {
 
   text:      "#E8ECF6",
   textSub:   "#A9B2C8",
-  textMuted: "#8F99B3",
+  textMuted: "#9AA3BC",
   textInv:   "#ffffff",
 
-  // accent as text: #818CF8 (6.4:1). The spec indigo #6366F1 is only 4.3:1 on the canvas, so it is used for fills (t.accent) only.
-  blue:      "#818CF8",
+  // accent as text: #8E98F9 (>= 4.8:1 even on glass over the strongest glow). The spec indigo #6366F1 is only 4.3:1 on the canvas, so it is used for fills (t.accent) only.
+  blue:      "#8E98F9",
   blueDim:   "#1C1F45",
   blueBorder:"#3F4290",
 
@@ -115,7 +121,13 @@ export const DARK: typeof LIGHT = {
   inset:       "inset 5px 5px 11px rgba(0,0,0,0.65), inset -4px -4px 10px rgba(255,255,255,0.03)",
   btn:         "#0E1321",
   btnBorder:   "rgba(255,255,255,0.06)",
-  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(99,102,241,0.22), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(34,211,238,0.12), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(139,92,246,0.18), transparent 60%)",
+  primaryShadow:"6px 8px 20px rgba(79,70,229,0.45), -4px -4px 10px rgba(255,255,255,0.03)",
+  cyan:        "#22D3EE",
+  heroRing:    "rgba(99,102,241,0.4)",
+  heroGlow:    "rgba(99,102,241,0.25)",
+  heroDash:    "rgba(34,211,238,0.4)",
+  heroConic:   "conic-gradient(from 0deg, rgba(99,102,241,0) 0deg, #6366F1 140deg, #22D3EE 300deg, rgba(34,211,238,0) 360deg)",
+  ambient:     "radial-gradient(900px 600px at 10% -10%, rgba(99,102,241,0.30), transparent 60%), radial-gradient(800px 560px at 95% 5%, rgba(34,211,238,0.18), transparent 60%), radial-gradient(900px 700px at 65% 115%, rgba(139,92,246,0.24), transparent 60%)",
 };
 
 export type Theme = typeof LIGHT;
