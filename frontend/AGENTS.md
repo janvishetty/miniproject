@@ -39,3 +39,13 @@ This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin con
 - Use double quotes for strings containing apostrophes (`"We're here to help"`), or escape them in single-quoted strings. An unescaped apostrophe in a single-quoted string breaks the build.
 - Ensure JSX tags are closed and braces are balanced.
 - Export components as default exports.
+
+## Project conventions (this repo)
+
+These apply on top of the scaffold notes above. Full details are in the root `README.md`, section "Frontend".
+
+- Style with the tokens in `src/theme.ts` (`t.*`) and the components in `src/ui.tsx` and `src/charts.tsx`, passed the theme as `t`. Do not add new colours, styles or libraries; the scaffold's Tailwind advice applies to `src/index.css` only.
+- Token roles: `t.blue` is accent text, `t.accent` an accent fill, `t.primary` a button fill, the `*Fill` tokens and `t.accentGrad` are for bars and dots, `t.link` is the neutral accent (ids, links), `t.sel*` the selected state.
+- Both themes (LIGHT and DARK) must stay readable: text at least 4.5:1. Keep keyboard focus rings and the reduced-motion and reduced-transparency rules in `src/index.css`.
+- The Report detail page prints as one plain column: keep the classes `no-print`, `report-aside`, `report-print-root`, `report-container` and `report-row`, and the print rules in `ReportDetailPage.tsx`. Do not add wrapper elements around the app root or the nav (the print rules select them).
+- The app has no router; the only deep link is `#report=INC-YYYY-NNNN`.

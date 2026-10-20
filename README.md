@@ -40,7 +40,7 @@ A small local model can invent facts, so its output is checked by code and never
 | Database and sign-in | Supabase (PostgreSQL and Supabase Auth) |
 | Detection | Rule engine (`fsia_cyber/`), pandas, scikit-learn (Isolation Forest), SHAP |
 | Local LLM | Ollama, `llama3.2:3b` |
-| Frontend | React, Vite, TypeScript |
+| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4 (see [Frontend](#frontend)) |
 
 ### Security
 
@@ -71,12 +71,140 @@ backend's AI bridge.
 | Page | What it does |
 |---|---|
 | Login | Sign-in only. Each teammate registers their own account via /docs (starts as analyst); an admin promotes roles in Supabase (see section 7). |
-| Dashboard | Counts, severity and type breakdowns for the current pipeline run. |
-| Incidents | Search and filter by severity/status, paging, incident detail with timeline, "Why it was flagged" (SHAP and rule reasons) and AI analysis; Investigate / Contain / Resolve (manager/admin) status changes. |
-| Reports | AI-generated, fact-checked reports for critical and high incidents; any incident's report can be generated on demand from its page. |
+| Dashboard | Summary cards (active incidents, platform risk score, events analysed), the API endpoint risk map, severity and attack-type breakdowns, a live events feed and the most recent incidents, for the current pipeline run. |
+| Incidents | Search and filter by severity/status, paging, incident detail with timeline, "Why it was flagged" (SHAP and rule reasons) and AI analysis; Investigate / Contain / Resolve (manager/admin) status changes; "View full report" when the incident has a report. |
+| Reports | AI-generated, fact-checked reports for critical and high incidents; any incident's report can be generated on demand from its page. Each report opens as a full page (`#report=INC-YYYY-NNNN`) with key findings, steps, containment actions, supporting evidence and a print / save as PDF view. |
 | AI Copilot | A welcome summary built from code; free questions answered by the LLM, grounded against incident data. |
 
 Route details (including report generation) are in [docs/API_CONTRACT.md](docs/API_CONTRACT.md).
+
+## Frontend
+
+The frontend is a React 19 and TypeScript app built with Vite 8. Tailwind CSS 4 supplies the base styles
+(`frontend/src/index.css`); the components are styled inline from the design tokens in `frontend/src/theme.ts`. It talks
+only to the FastAPI backend (`VITE_API_URL`, default `http://127.0.0.1:8000`) and never to the database. It has no
+router: the four tabs are held in memory, and the only page with its own link is the Report detail page.
+
+### Install the libraries
+
+Run these from the repo root. Node 22 is required (`frontend/.mise.toml`). pnpm is run through `npx`, so it needs no
+global install. The same frontend command works in both shells. Sections 3 to 5 of "Team setup" explain each step in
+detail.
+
+**macOS / Linux**
+
+```bash
+# Frontend (React, Vite, TypeScript, Tailwind)
+cd frontend
+npx pnpm@10.34.3 install
+cd ..
+
+# Backend API libraries
+cd backend
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd ..
+
+# ML libraries (separate environment in the repo root)
+python3.12 -m venv .venv
+.venv/bin/pip install -r backend/ml/requirements.txt
+```
+
+**Windows PowerShell**
+
+```powershell
+# Frontend (React, Vite, TypeScript, Tailwind)
+cd frontend
+npx pnpm@10.34.3 install
+cd ..
+
+# Backend API libraries
+cd backend
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+cd ..
+
+# ML libraries (separate environment in the repo root)
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r backend\ml\requirements.txt
+```
+
+### Run, check and build
+
+Run these from `frontend/` (the same commands in macOS / Linux and Windows PowerShell):
+
+```bash
+npx pnpm@10.34.3 dev              # development server on http://localhost:8443
+npx tsc --noEmit -p .             # TypeScript check (after install)
+npx pnpm@10.34.3 build            # production build (runs "vite build")
+```
+
+The backend tests (356) run from `backend/` with its environment active: `pytest`.
+
+### Pages and links
+
+- Top navigation with four tabs: Dashboard, Incidents, Reports and AI Copilot, a critical-incident count, an
+  "All systems live" pill (from `GET /health`) and a profile menu (theme, sign out).
+- **Report detail** is a full page inside the Reports tab. It opens from a report card, from "View full report" on an
+  incident that has a report, or from a link of the form `http://localhost:8443/#report=INC-2026-0081`. Only ids of the
+  form `INC-YYYY-NNNN` are accepted. The page needs a signed-in session, shows "Print / Save as PDF", and its
+  "Open incident" button returns to the incident.
+
+### Design system
+
+The look is a glass and neumorphic theme with a light and a dark palette, both defined in `frontend/src/theme.ts`.
+Light is the default. The theme toggle is on the login page and in the profile menu. Cards and panels are glass
+(`t.glass` with a backdrop blur); buttons, tiles, icon wells and tracks are neumorphic (`t.raised`, `t.raisedSm`,
+`t.inset`). Pages must use the tokens and the components in `ui.tsx` and `charts.tsx`, not new colours or styles.
+
+| Token | Use it for |
+|---|---|
+| `t.text`, `t.textSub`, `t.textMuted` | Text. |
+| `t.blue` | Accent **text and icons** (and the active tab). Emerald in light, indigo in dark. |
+| `t.accent` | Accent **fills** only (glows, dots). Do not use it as a bar fill in light: it is 2.0:1 against the track. |
+| `t.primary`, `t.primaryHover`, `t.primaryShadow` | The primary button and the user chat bubble (white text on top). |
+| `t.redFill`, `t.amberFill`, `t.mediumFill`, `t.greenFill`, `t.accentGrad` | **Bars, donut rings and dots.** `ProgressBar` and `HBars` map a status text colour to its fill with `fillOf()`; pass `fill` to override it. |
+| `t.red`, `t.amber`, `t.medium`, `t.green` (+ `Dim`, `Border`) | Status **text** on tinted badges and panels. Never draw bars with them. |
+| `t.link`, `t.linkDim`, `t.linkBorder` | Neutral accents: incident ids, links, info panels. |
+| `t.selBorder`, `t.selGlow`, `t.selText` | The selected state (filter chip, list row). |
+
+In light mode emerald is kept for the primary action, the active tab, success and the selected state; neutral accents
+use `t.link`.
+
+### Accessibility
+
+- Text colours were checked for at least 4.5:1 on the page background, on glass at the strongest glow and on solid
+  panels, in both themes. The light-mode red, amber and medium text colours are used only on tinted badges, panels and
+  cards, not on the bare page background. Placeholder text uses `t.textMuted`.
+- Keyboard: every button has a visible focus ring, list rows and report cards are reachable with Tab and open with Enter
+  or Space, and filter chips use `aria-pressed`.
+- Reduced motion switches off the entrance and live-dot animations and the login hero's slow rotation. Reduced
+  transparency removes the backdrop blur.
+
+### Printing a report
+
+"Print / Save as PDF" on the Report detail page uses the print rules in `frontend/src/ReportDetailPage.tsx`. They hide
+the navigation, toasts and buttons, force a white page with dark text, remove the glass blur, shadows and glows, and
+lay the report out as one column. Only the bar fills and the timeline dots keep their colour.
+
+### Known limitations
+
+- **Response time is not measured.** The dashboard has no response-time card (the API field `avg_response_time` exists
+  but is not shown) because there is no data behind it.
+- **"Clear" is not a guarantee.** On the API Endpoint Risk Map, an endpoint with no flagged incident shows "Clear". Its
+  alert count is the number of incidents that touched it, and `api_logs.csv` records only successful calls. The Balance
+  and Transaction History tiles are hidden while their alert count is exactly 0; any other endpoint with 0 alerts is shown
+  as "Clear".
+- **- **Printing** was checked from both the light and the dark theme: the report prints on a plain white page. Print from a desktop browser's "Save as PDF".
+  <!-- TODO: confirm printing from the dark theme in a browser. -->
+- **The login hero is fixed text.** "Isolation Forest + SHAP", "9 detection rules" and "Fact-checked AI reports" are not
+  read from the API. The 9 matches the rule engine today (`fsia_cyber/`); it will not follow if rules are added.
+- **"No report yet" depends on one backend message.** Report detail shows "No report has been generated" only when the
+  API's 404 message is exactly `No report for this incident yet`; any other 404 shows "not in the current pipeline run".
+- **Some controls are placeholders.** "Escalate" only shows a notice and saves nothing; "Edit Profile" changes only the
+  name shown in the app; "Change Password" does nothing.
+- **Nothing survives a reload.** The theme choice and the sign-in token are kept in memory, so reloading signs you out
+  and returns to the light theme. Only the Report detail page has a link; the other tabs cannot be linked to.
 
 ## Headline results
 
@@ -100,7 +228,7 @@ are optimistic.
 | `fsia_cyber/` | Cybersecurity layer: 9 detection rules, alert correlation, MITRE ATT&CK mapping | Aarushi | [fsia_cyber/README.md](fsia_cyber/README.md) |
 | `backend/ml/` | ML/LLM pipeline: preprocessing, anomaly detection, SHAP, hybrid incidents, reports, Copilot, evaluation | Janvi | [backend/ml/README.md](backend/ml/README.md) |
 | `backend/` | FastAPI API, Supabase loading and integration | Anushka | [backend/README.md](backend/README.md) |
-| `frontend/` | Vite + React app | Lakshayaa and Ayush (design), Anushka (API wiring) | |
+| `frontend/` | Vite + React app | Lakshayaa and Ayush (design), Anushka (API wiring) | [Frontend](#frontend) |
 | `docs/` | Results, API contract, labelled analyst-review sheets | | [docs/RESULTS.md](docs/RESULTS.md), [docs/API_CONTRACT.md](docs/API_CONTRACT.md) |
 
 ## Team setup (shared demo project)
@@ -377,7 +505,8 @@ From [docs/RESULTS.md](docs/RESULTS.md):
 - Correlation is entity-based (user, IP, time), not graph-based.
 - The small LLM can mis-relate facts; the grounding check and the template fallback contain this.
 - Analyst status changes belong to one pipeline run.
-- There is no response-time data (the dashboard shows "—").
+- There is no response-time data (the dashboard has no response-time card).
+- The critical-count pill can disappear. It is hidden if the dashboard request fails (for example while the backend restarts). Switching tabs or reloading brings it back.
 
 ### 14. Future scope
 
