@@ -276,9 +276,9 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
             </Card>
 
             {/* AI confidence */}
-            <Card t={t} style={{ padding: "16px 20px", marginBottom: 16, border: `1px solid ${t.blueBorder}` }}>
+            <Card t={t} style={{ padding: "16px 20px", marginBottom: 16, border: `1px solid ${t.linkBorder}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: t.blueDim, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue }}>{Icons.bot}</div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: t.linkDim, display: "flex", alignItems: "center", justifyContent: "center", color: t.link }}>{Icons.bot}</div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>AI Analysis</div>
                   <div style={{ fontSize: 11, color: t.textSub }}>Isolation Forest + SHAP · llama3.2:3b (local)</div>
