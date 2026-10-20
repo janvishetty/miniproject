@@ -184,7 +184,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
       </div>
     );
   } else if (rep.status === "error") {
-    content = retry(rep.message, () => setRepTry(n => n + 1));
+    content = <div style={{ background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 8, padding: "10px 14px" }}>{retry(rep.message, () => setRepTry(n => n + 1))}</div>;
   } else if (rep.status === "gone") {
     content = <Card t={t}><EmptyState icon={Icons.incidents} title={`${id} is not in the current pipeline run`} sub="The data may have been reloaded since this link was made." t={t}/></Card>;
   } else if (rep.status === "missing") {
@@ -280,7 +280,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
                       {i < inc.timeline.length - 1 && <div style={{ width: 2, flex: 1, background: t.border, margin: "2px 0" }}/>}
                     </div>
                     <div style={{ paddingBottom: 16 }}>
-                      <div style={{ ...mono, fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{e.time} · <span style={{ color: t.textSub, fontWeight: 600 }}>{e.actor}</span></div>
+                      <div style={{ ...mono, fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{e.time} · <span style={{ color: t.textSub, fontWeight: 500 }}>{e.actor}</span></div>
                       <div style={{ fontSize: 13, color: t.textSub, lineHeight: 1.4 }}>{e.msg}</div>
                     </div>
                   </div>

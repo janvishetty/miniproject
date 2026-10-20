@@ -41,7 +41,7 @@ export const LIGHT = {
   mediumFill:"#2563EB",
   greenFill: "#04916A",
   // Do NOT pass t.accent as a bar fill in light (2.0:1 against the track): use accentGrad or a fill token there.
-  accentGrad:"linear-gradient(90deg, #334155, #0E7490)",   // neutral accent bars: slate to cyan, not emerald (indigo is dark-theme only)
+  accentGrad:"linear-gradient(90deg, #2563EB, #0E7490)",   // neutral accent bars: blue to cyan, not emerald (indigo is dark-theme only); both ends >= 3:1 on the inset track (4.1, 4.2)
   // Neutral accent for incident ids, links, selected rows. Emerald (t.blue / t.primary / t.green) is kept for the primary action, active tab and success.
   link:      "#334155",
   linkDim:   "#E2E8F0",
@@ -62,7 +62,7 @@ export const LIGHT = {
   radiusLg:  "16px",
 
   // Glass + neumorphism (new)
-  glass:       "rgba(255,255,255,0.55)",
+  glass:       "rgba(255,255,255,0.46)",
   glassBorder: "rgba(255,255,255,0.9)",
   blur:        "blur(20px)",
   raised:      "8px 8px 16px #A3B1C6, -8px -8px 16px rgba(255,255,255,0.9)",
@@ -167,7 +167,7 @@ export function sevColor(sev: string, t: Theme) {
 export function fillOf(color: string, t: Theme, fill?: string): { bg: string; glow: string } {
   const hit = fill !== undefined ? undefined : ([[t.red, t.redFill], [t.amber, t.amberFill], [t.medium, t.mediumFill], [t.green, t.greenFill], [t.link, t.accentGrad], [t.blue, t.accentGrad]] as [string, string][]).find(([k]) => k === color);
   const bg = fill ?? (hit ? hit[1] : color);
-  return { bg, glow: (bg.startsWith("#") ? bg : t.link) + "66" };
+  return { bg, glow: (bg.match(/#[0-9a-fA-F]{6}/)?.[0] ?? t.link) + "4d" };
 }
 
 export function statusColor(s: string, t: Theme) {

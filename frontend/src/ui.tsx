@@ -30,7 +30,7 @@ export function sourceLabel(source: string | null | undefined) {
 }
 
 // ─── Button ──────────────────────────────────────────────────────────────────
-type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
+type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "success" | "successOutline" | "linkOutline";
 interface BtnProps {
   children: React.ReactNode;
   onClick?: () => void;
@@ -48,6 +48,9 @@ export function Btn({ children, onClick, variant = "secondary", t, disabled, siz
     ghost:     { bg: "transparent", color: t.textSub, border: "transparent", hoverBg: t.badge },
     danger:    { bg: t.redDim,  color: t.red,        border: t.redBorder,    hoverBg: t.red + "22" },
     success:   { bg: t.greenDim,color: t.green,      border: t.greenBorder,  hoverBg: t.green + "22" },
+    // Neutral raised surface, coloured text and 1px outline in the same colour
+    successOutline: { bg: t.btn, color: t.green, border: t.green, hoverBg: t.cardHover },
+    linkOutline:    { bg: t.btn, color: t.link,  border: t.link,  hoverBg: t.cardHover },
   };
   const pad = size === "sm" ? "6px 12px" : size === "lg" ? "12px 24px" : "8px 16px";
   const fs  = size === "sm" ? 12 : size === "lg" ? 15 : 13;
@@ -135,7 +138,7 @@ export function ProgressBar({ value, max = 100, color, fill, t }: { value: numbe
   const f = fillOf(color, t, fill);
   return (
     <div style={{ height: 6, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
-      <div className="print-keep" style={{ height: "100%", width: `${pct}%`, background: f.bg, boxShadow: `0 0 10px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
+      <div className="print-keep" style={{ height: "100%", width: `${pct}%`, background: f.bg, boxShadow: `0 0 8px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
     </div>
   );
 }

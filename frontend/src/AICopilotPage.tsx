@@ -120,7 +120,7 @@ export default function AICopilotPage({ t }: Props) {
   );
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out" }}>
+    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out", ["--ph" as string]: t.textMuted }}>
 
       {/* Side panel (glass) */}
       <div data-glass="" style={{ width: 340, background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: 20, boxShadow: t.shadow, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0 }}>
@@ -184,7 +184,7 @@ export default function AICopilotPage({ t }: Props) {
                         </div>
                       )}
                     </div>
-                    <div style={{ fontSize: 10, color: msg.role === "user" ? "rgba(255,255,255,0.9)" : t.textMuted, marginTop: 6, textAlign: "right" as const }}>{msg.ts}</div>
+                    <div style={{ fontSize: 11, color: msg.role === "user" ? "rgba(255,255,255,0.9)" : t.textMuted, marginTop: 6, textAlign: "right" as const }}>{msg.ts}</div>
                   </>
                 )}
               </div>

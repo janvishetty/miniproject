@@ -74,7 +74,7 @@ function ProfileDropdown({ user, t, isDark, setIsDark, onEdit, onSignOut, onClos
         <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>{user.name}</div>
         <div style={{ fontSize: 12, color: t.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>@{user.username}</div>
         <div style={{ fontSize: 12, color: t.textSub }}>{user.email}</div>
-        <div style={{ marginTop: 6, display: "inline-block", background: t.blueDim, color: t.blue, border: `1px solid ${t.blueBorder}`, borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 600 }}>{user.position}</div>
+        <div style={{ marginTop: 6, display: "inline-block", background: t.linkDim, color: t.link, border: `1px solid ${t.linkBorder}`, borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 600 }}>{user.position}</div>
       </div>
 
       {/* Actions */}
@@ -233,7 +233,7 @@ export default function App() {
           <LogoMark t={t} size={32}/>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: t.text, lineHeight: 1.1 }}>Vantix</div>
-            <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 500 }}>FinTech Security Platform</div>
+            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 500 }}>FinTech Security Platform</div>
           </div>
         </div>
 
@@ -267,7 +267,7 @@ export default function App() {
             <div
               onClick={() => setShowProfile(v => !v)}
               title={`${user.name} — ${user.position}`}
-              style={{ width: 34, height: 34, borderRadius: "50%", background: t.brandGrad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", userSelect: "none" as const, border: showProfile ? `2px solid ${t.blue}` : "2px solid transparent", transition: "border-color 0.15s" }}
+              style={{ width: 34, height: 34, borderRadius: "50%", background: t.brandGrad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", userSelect: "none" as const, border: showProfile ? `2px solid ${t.focus}` : "2px solid transparent", transition: "border-color 0.15s" }}
             >
               {initials}
             </div>

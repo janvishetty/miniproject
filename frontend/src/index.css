@@ -24,6 +24,8 @@ nav > div:nth-child(2) > button:focus-visible { border-radius: 10px; outline-off
 @media (min-width: 960px) { .login-hero { display: flex; } }
 .login-input:focus { outline: 2px solid var(--focus, currentColor) !important; outline-offset: 1px !important; }  /* !important: the inline outline:none would otherwise win */
 .login-input::placeholder { color: var(--ph); opacity: 1; }
+/* Tailwind's preflight dims placeholders to 50% of the text colour (2.9:1 on the light field). Use the muted text token where a page sets --ph, else 72% of the text colour. */
+input::placeholder, textarea::placeholder { color: var(--ph, color-mix(in srgb, currentColor 72%, transparent)); opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .hero-spin     { animation: spin 40s linear infinite; }
   .hero-spin-rev { animation: spin 60s linear infinite reverse; }
@@ -31,6 +33,8 @@ nav > div:nth-child(2) > button:focus-visible { border-radius: 10px; outline-off
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeUp, .animate-fadeIn, .animate-slideIn, .live-dot { animation: none !important; }
 }
+
+@media print { .report-print-root { animation: none !important; } }
 
 /* Glass cards drop the blur for users who ask for reduced transparency. */
 @media (prefers-reduced-transparency: reduce) {

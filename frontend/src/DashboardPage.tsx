@@ -91,8 +91,8 @@ export default function DashboardPage({ t, onNavigate }: Props) {
                     onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = color + "0d"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.bg; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, background: t.card, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>{node.tag}</span>
-                      <span style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "'DM Mono',monospace" }}>{node.score}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, background: t.card, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>{node.tag}</span>
+                      <span style={{ fontSize: 15, fontWeight: 500, color, fontFamily: "'DM Mono',monospace" }}>{node.score}</span>
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.3 }}>{node.id}</div>
                     <ProgressBar value={node.score} color={color} t={t}/>
@@ -130,7 +130,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
               <div key={i} className={i === 0 ? "animate-slideIn" : ""} style={{ display: "flex", gap: 10, padding: "8px 10px", background: t.bg, borderRadius: t.radiusSm, alignItems: "flex-start" }}>
                 <div style={{ width: 7, height: 7, borderRadius: "50%", background: streamTypeColor(e.type ?? "", t), flexShrink: 0, marginTop: 4 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 1 }}>{(e.ts ?? "").slice(5, 16)} · {e.node}</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 1 }}>{(e.ts ?? "").slice(5, 16)} · {e.node}</div>
                   <div style={{ fontSize: 12, color: t.textSub, lineHeight: 1.35 }}>{e.msg}</div>
                 </div>
               </div>

@@ -155,7 +155,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out" }}>
+    <div style={{ display: "flex", flex: 1, minHeight: 0, gap: 24, padding: "20px 24px", animation: "fadeUp 0.25s ease-out", ["--ph" as string]: t.textMuted }}>
 
       {/* List panel (glass) */}
       <div data-glass="" style={{ width: 380, display: "flex", flexDirection: "column", background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: 20, boxShadow: t.shadow, overflow: "hidden", flexShrink: 0 }}>
@@ -179,7 +179,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 {opts.map(o => {
                   const on = current === o;
                   return (
-                    <button key={o} aria-pressed={on} onClick={() => changeFilter(setter, o)} style={{ minHeight: 32, fontSize: 12, fontWeight: 600, padding: "0 14px", borderRadius: 99, border: `1px solid ${on ? t.linkBorder : t.btnBorder}`, background: on ? t.input : t.btn, boxShadow: on ? t.inset : t.raisedSm, color: on ? t.link : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
+                    <button key={o} aria-pressed={on} onClick={() => changeFilter(setter, o)} style={{ minHeight: 32, fontSize: 12, fontWeight: on ? 700 : 600, padding: "0 14px", borderRadius: 99, border: `1px solid ${on ? t.linkBorder : t.btnBorder}`, background: on ? t.input : t.btn, boxShadow: on ? `${t.inset}, 0 0 0 1px ${t.linkBorder}, 0 0 12px ${t.link}40` : t.raisedSm, color: on ? t.link : t.textSub, cursor: "pointer", transition: "all 0.15s" }}
                       onMouseEnter={e => { if (!on) e.currentTarget.style.background = t.cardHover; }}
                       onMouseLeave={e => { if (!on) e.currentTarget.style.background = t.btn; }}>{g === 1 && o === "All" ? "Any status" : o}</button>
                   );
@@ -260,9 +260,9 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" as const }}>
               <Btn t={t} variant="primary" icon={Icons.eye} disabled={busy || ["INVESTIGATING", "CONTAINED", "RESOLVED"].includes(detail.status)} onClick={() => changeStatus("INVESTIGATING")}>Investigate</Btn>
-              <Btn t={t} variant="success" disabled={busy || ["CONTAINED", "RESOLVED"].includes(detail.status)} onClick={() => setConfirm({ label: "Contain", message: `Isolate the affected asset (${detail.asset ?? "unknown"}) and stop the threat from spreading?`, variant: "success" })}>Contain Threat</Btn>
+              <Btn t={t} variant="linkOutline" disabled={busy || ["CONTAINED", "RESOLVED"].includes(detail.status)} onClick={() => setConfirm({ label: "Contain", message: `Isolate the affected asset (${detail.asset ?? "unknown"}) and stop the threat from spreading?`, variant: "success" })}>Contain Threat</Btn>
               {(role === "manager" || role === "admin") && detail.status !== "RESOLVED" && (
-                <Btn t={t} variant="success" disabled={busy} onClick={() => setConfirm({ label: "Resolve", message: `Mark ${detail.id} as resolved?`, variant: "success" })}>Resolve</Btn>
+                <Btn t={t} variant="successOutline" disabled={busy} onClick={() => setConfirm({ label: "Resolve", message: `Mark ${detail.id} as resolved?`, variant: "success" })}>Resolve</Btn>
               )}
               <Btn t={t} variant="danger"  onClick={() => showToast(`Escalation noted for ${detail.id}`, "warning")}>Escalate</Btn>
               <Btn t={t} variant="ghost"   disabled={!!genId} onClick={generateReport}>{genId ? `Generating… (${genSecs}s)` : "Generate Report"}</Btn>
@@ -275,7 +275,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 {[["Source IP", detail.ip],["Affected Asset", detail.asset],["Attack Vector", detail.vector],["Assigned Analyst", detail.analyst],["Detected", detail.created],["Threat Actor", detail.threat_actor]].map(([label, val]) => (
                   <div key={label}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, marginBottom: 3, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text, fontFamily: label === "Source IP" || label === "Detected" ? "'DM Mono',monospace" : undefined }}>{val ?? "—"}</div>
+                    <div style={{ fontSize: 13, fontWeight: label === "Source IP" || label === "Detected" ? 500 : 600, color: t.text, fontFamily: label === "Source IP" || label === "Detected" ? "'DM Mono',monospace" : undefined }}>{val ?? "—"}</div>
                   </div>
                 ))}
               </div>
@@ -297,14 +297,14 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 12, color: t.textSub, fontWeight: 500 }}>AI Confidence</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: t.link, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.confidence ?? 0)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: t.link, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.confidence ?? 0)}%</span>
                   </div>
                   <ProgressBar value={detail.confidence ?? 0} color={t.link} fill={t.accentGrad} t={t}/>
                 </div>
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 12, color: t.textSub, fontWeight: 500 }}>Business Impact</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: t.amber, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.impact ?? 0)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: t.amber, fontFamily: "'DM Mono',monospace" }}>{Math.round(detail.impact ?? 0)}%</span>
                   </div>
                   <ProgressBar value={detail.impact ?? 0} color={t.amber} fill={t.amberFill} t={t}/>
                 </div>
@@ -346,7 +346,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
                       {i < detail.timeline.length - 1 && <div style={{ width: 2, flex: 1, background: t.border, margin: "2px 0" }}/>}
                     </div>
                     <div style={{ paddingBottom: 16 }}>
-                      <div style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 2 }}>{ev.time} · <span style={{ color: t.textSub, fontWeight: 600 }}>{ev.actor}</span></div>
+                      <div style={{ fontSize: 11, color: t.textMuted, fontFamily: "'DM Mono',monospace", marginBottom: 2 }}>{ev.time} · <span style={{ color: t.textSub, fontWeight: 500 }}>{ev.actor}</span></div>
                       <div style={{ fontSize: 13, color: t.textSub, lineHeight: 1.4 }}>{ev.msg}</div>
                     </div>
                   </div>

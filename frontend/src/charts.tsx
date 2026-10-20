@@ -29,7 +29,7 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
           return el;
         })}
         <text x="60" y="58" textAnchor="middle" style={{ fontSize: 22, fontWeight: 500, fill: t.text, fontFamily: "'DM Mono',monospace" }}>{total}</text>
-        <text x="60" y="74" textAnchor="middle" style={{ fontSize: 10, fill: t.textMuted }}>open</text>
+        <text x="60" y="74" textAnchor="middle" style={{ fontSize: 11, fill: t.textMuted }}>open</text>
       </svg>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
@@ -37,7 +37,7 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
           <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: sevColor(s, t).fill, flexShrink: 0 }}/>
             <span style={{ color: t.textSub, flex: 1 }}>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
-            <span style={{ color: t.text, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>{counts[s] ?? 0}</span>
+            <span style={{ color: t.text, fontWeight: 500, fontFamily: "'DM Mono',monospace" }}>{counts[s] ?? 0}</span>
           </div>
         ))}
       </div>
@@ -56,10 +56,10 @@ export function HBars({ rows, color, fill, t, empty }: { rows: { label: string; 
         <div key={r.label}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 4, fontSize: 12 }}>
             <span style={{ color: t.textSub }}>{r.label}</span>
-            <span style={{ color: t.text, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>{r.note ?? r.value}</span>
+            <span style={{ color: t.text, fontWeight: 500, fontFamily: "'DM Mono',monospace" }}>{r.note ?? r.value}</span>
           </div>
           <div style={{ height: 8, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
-            <div className="print-keep" style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: f.bg, boxShadow: `0 0 10px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
+            <div className="print-keep" style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: f.bg, boxShadow: `0 0 8px ${f.glow}`, borderRadius: 99, transition: "width 0.5s ease" }}/>
           </div>
         </div>
       ))}
