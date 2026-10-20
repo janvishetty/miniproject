@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import * as api from "./api";
 import type { Theme } from "./theme";
-import { Card, Btn, EmptyState, Icons, sourceLabel } from "./ui";
+import { Card, Btn, SevBadge, EmptyState, Icons, sourceLabel } from "./ui";
 import { Skeleton } from "./charts";
+import ReportDetailPage, { reportIdFromHash, openReportHash, closeReportHash } from "./ReportDetailPage";
 
-interface Props { t: Theme; }
+interface Props { t: Theme; showToast: (msg: string, type?: string) => void; onOpenIncident: (id: string) => void; }
 
-export default function LLIReportsPage({ t }: Props) {
+export default function LLIReportsPage({ t, showToast, onOpenIncident }: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(reportIdFromHash);
   const [reports, setReports] = useState<api.Report[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -24,7 +26,19 @@ export default function LLIReportsPage({ t }: Props) {
     return () => { alive = false; };
   }, [page, attempt]);
 
+  // Browser Back/Forward, a pasted link and the Back button all just change the hash.
+  useEffect(() => {
+    const sync = () => setSelectedId(reportIdFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
   const lastPage = Math.max(1, Math.ceil(total / 20));
+
+  if (selectedId) {
+    return <ReportDetailPage key={selectedId} t={t} id={selectedId} showToast={showToast}
+      onBack={() => { setAttempt(n => n + 1); closeReportHash(); }} onOpenIncident={onOpenIncident}/>;
+  }
 
   return (
     <div style={{ padding: "24px 28px", overflowY: "auto", flex: 1, minHeight: 0, animation: "fadeUp 0.25s ease-out" }}>
@@ -54,17 +68,28 @@ export default function LLIReportsPage({ t }: Props) {
           {/* Report cards grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
             {!loading && reports.map(r => (
-              <Card key={r.id} t={t} hoverable style={{ padding: "18px 20px" }}>
+              <div key={r.id} role="button" tabIndex={0} aria-label={`Open report ${r.id}: ${r.title}`}
+                onClick={() => openReportHash(r.id)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openReportHash(r.id); } }}
+                onFocus={e => { if (e.currentTarget.matches(":focus-visible")) { e.currentTarget.style.outline = `2px solid ${t.blue}`; e.currentTarget.style.outlineOffset = "2px"; } }}
+                onBlur={e => { e.currentTarget.style.outline = "none"; }}
+                style={{ borderRadius: t.radius, cursor: "pointer", outline: "none" }}>
+              <Card t={t} hoverable style={{ padding: "18px 20px", height: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
                     <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: t.blue, fontWeight: 500, display: "block", marginBottom: 4 }}>{r.id}</span>
                     <span style={{ background: t.badge, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600, color: t.textSub }}>{sourceLabel(r.source)}</span>
                   </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <SevBadge level={r.sev} t={t}/>
                   <span style={{ background: r.grounded ? t.greenDim : t.amberDim, color: r.grounded ? t.green : t.amber, border: `1px solid ${r.grounded ? t.greenBorder : t.amberBorder}`, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{r.grounded ? "Verified" : "Unverified"}</span>
+                  </div>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 6, lineHeight: 1.4 }}>{r.title}</div>
+                {r.summary && <div style={{ fontSize: 12, color: t.textSub, lineHeight: 1.5, marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.summary}</div>}
                 <div style={{ fontSize: 12, color: t.textMuted }}>Created: {(r.created_at ?? "").slice(0, 16).replace("T", " ")}</div>
               </Card>
+              </div>
             ))}
           </div>
 

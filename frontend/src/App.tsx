@@ -6,6 +6,7 @@ import DashboardPage from "./DashboardPage";
 import IncidentsPage from "./IncidentsPage";
 import LLIReportsPage from "./LLIReportsPage";
 import AICopilotPage from "./AICopilotPage";
+import { reportIdFromHash, openReportHash, clearReportHash } from "./ReportDetailPage";
 import * as api from "./api";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -144,7 +145,8 @@ export default function App() {
   const [user, setUser]               = useState<UserProfile>({ id: "", name: "", username: "", email: "", position: "Security Analyst", role: "analyst" });
   const [critical, setCritical]       = useState<number | null>(null);
   const [healthy, setHealthy]         = useState(false);
-  const [tab, setTab]                 = useState<string>("DASHBOARD");
+  const [tab, setTab]                 = useState<string>(() => reportIdFromHash() ? "LLI REPORTS" : "DASHBOARD");
+  const [focusIncident, setFocusIncident] = useState<string | null>(null);
   const [toasts, setToasts]           = useState<Toast[]>([]);
   const [showProfile, setShowProfile] = useState(false);
   const [showEdit, setShowEdit]       = useState(false);
@@ -166,15 +168,26 @@ export default function App() {
   function resetSession() {
     setIsAuth(false);
     setShowProfile(false);
-    setTab("DASHBOARD");
+    setTab(reportIdFromHash() ? "LLI REPORTS" : "DASHBOARD");
     setCritical(null);
     setHealthy(false);
   }
 
   function handleSignOut() {
     api.logout();
+    clearReportHash();
     resetSession();
   }
+
+  function openReport(id: string) { openReportHash(id); setTab("LLI REPORTS"); }
+  function openIncident(id: string) { setFocusIncident(id); setTab("INCIDENTS"); }
+
+  // The report hash only lives on the Reports tab; the incident preselect only on first entry to Incidents.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (tab !== "LLI REPORTS") clearReportHash();
+    if (tab !== "INCIDENTS") setFocusIncident(null);
+  }, [tab, isAuthenticated]);
 
   // Any 401 from the API (token expired or revoked) lands here.
   useEffect(() => {
@@ -277,8 +290,8 @@ export default function App() {
       {/* ── Page content ── */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {tab === "DASHBOARD"   && <DashboardPage  {...pageProps} onNavigate={setTab}/>}
-        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps} role={user.role} onChanged={refreshCritical}/>}
-        {tab === "LLI REPORTS" && <LLIReportsPage {...pageProps}/>}
+        {tab === "INCIDENTS"   && <IncidentsPage  {...pageProps} role={user.role} onChanged={refreshCritical} initialId={focusIncident} onViewReport={openReport}/>}
+        {tab === "LLI REPORTS" && <LLIReportsPage {...pageProps} onOpenIncident={openIncident}/>}
         {tab === "AI COPILOT"  && <AICopilotPage  {...pageProps}/>}
       </div>
 
