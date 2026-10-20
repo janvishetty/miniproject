@@ -70,7 +70,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         <StatCard label="Active Incidents"    value={String(data.active_incidents)} sub={`${data.critical_open} critical need action`} icon={Icons.alert}    color={t.red}   t={t}/>
-        <StatCard label="Platform Risk Score" value={`${data.platform_risk_score}/100`} sub="Severity-weighted mean risk of open incidents" icon={Icons.shield}  color={t.amber} t={t}/>
+        <StatCard label="Platform Risk Score" value={`${data.platform_risk_score}/100`} sub="Severity-weighted mean risk of open incidents" icon={Icons.shield}  color={t.amber} progress={{ value: data.platform_risk_score, fill: t.amberFill }} t={t}/>
         <StatCard label="Events Analysed"     value={(data.events_analysed ?? 0).toLocaleString()} sub={data.events_analysed_sub ?? "Scored by the model"} icon={Icons.activity} color={t.link} t={t}/>
         <StatCard label="Avg Response Time"   value="—" sub="No response data yet" icon={Icons.clock} color={t.green} t={t}/>
       </div>
@@ -145,7 +145,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
           action={<Btn t={t} variant="primary" size="sm" onClick={() => onNavigate("INCIDENTS")}>View All Incidents</Btn>}/>
         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 100px 120px 80px", gap: 12, padding: "8px 12px", fontSize: 11, fontWeight: 600, color: t.textMuted, borderBottom: `1px solid ${t.border}`, marginBottom: 4 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 100px 120px 80px", gap: 12, padding: "8px 12px", fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${t.border}`, marginBottom: 4 }}>
             <span>Incident ID</span><span>Title</span><span>Severity</span><span>Status</span><span>Time</span>
           </div>
           {data.recent.length === 0 && <div style={{ fontSize: 12, color: t.textMuted, padding: "10px 12px" }}>No incidents in this run.</div>}

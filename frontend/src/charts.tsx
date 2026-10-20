@@ -16,7 +16,9 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
   let offset = 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Open incidents by severity" style={{ flexShrink: 0 }}>
+      <div style={{ position: "relative", width: 120, height: 120, flexShrink: 0 }}>
+      <div aria-hidden="true" style={{ position: "absolute", inset: 24, borderRadius: "50%", background: t.input, boxShadow: t.inset }}/>
+      <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Open incidents by severity" style={{ position: "absolute", inset: 0 }}>
         <circle cx="60" cy="60" r={R} fill="none" stroke={t.badge} strokeWidth="16"/>
         {SEV_ORDER.map(s => {
           const n = counts[s] ?? 0;
@@ -26,9 +28,10 @@ export function SeverityDonut({ counts, t }: { counts: Partial<Record<Severity, 
           offset += len;
           return el;
         })}
-        <text x="60" y="58" textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: t.text, fontFamily: "'DM Mono',monospace" }}>{total}</text>
+        <text x="60" y="58" textAnchor="middle" style={{ fontSize: 22, fontWeight: 500, fill: t.text, fontFamily: "'DM Mono',monospace" }}>{total}</text>
         <text x="60" y="74" textAnchor="middle" style={{ fontSize: 10, fill: t.textMuted }}>open</text>
       </svg>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
         {SEV_ORDER.map(s => (
           <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>

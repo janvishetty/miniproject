@@ -113,7 +113,7 @@ export function SectionHead({ title, sub, t, action }: { title: string; sub?: st
 }
 
 // ─── Stat card ───────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, icon, color, t }: { label: string; value: string; sub?: string; icon: React.ReactNode; color: string; t: Theme }) {
+export function StatCard({ label, value, sub, icon, color, progress, t }: { label: string; value: string; sub?: string; icon: React.ReactNode; color: string; progress?: { value: number; max?: number; fill?: string }; t: Theme }) {
   return (
     <Card t={t} style={{ padding: "20px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -121,9 +121,10 @@ export function StatCard({ label, value, sub, icon, color, t }: { label: string;
           {icon}
         </div>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: t.text, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: t.text, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }}>{value}</div>
       <div style={{ fontSize: 13, fontWeight: 600, color: t.textSub, marginTop: 4 }}>{label}</div>
       {sub && <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>{sub}</div>}
+      {progress && <div style={{ marginTop: 12 }}><ProgressBar value={progress.value} max={progress.max} color={color} fill={progress.fill} t={t}/></div>}
     </Card>
   );
 }
