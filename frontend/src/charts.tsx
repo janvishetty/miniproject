@@ -54,8 +54,8 @@ export function HBars({ rows, color, t, empty }: { rows: { label: string; value:
             <span style={{ color: t.textSub }}>{r.label}</span>
             <span style={{ color: t.text, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>{r.note ?? r.value}</span>
           </div>
-          <div style={{ height: 8, background: t.badge, borderRadius: 99, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
+          <div style={{ height: 8, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
+            <div className="print-keep" style={{ height: "100%", width: `${(r.value / max) * 100}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
           </div>
         </div>
       ))}

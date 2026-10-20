@@ -43,8 +43,8 @@ interface BtnProps {
 }
 export function Btn({ children, onClick, variant = "secondary", t, disabled, size = "md", fullWidth, icon }: BtnProps) {
   const styles: Record<BtnVariant, { bg: string; color: string; border: string; hoverBg: string }> = {
-    primary:   { bg: t.blue,    color: t.textInv,   border: t.blue,         hoverBg: t.blue + "cc" },
-    secondary: { bg: t.card,    color: t.text,       border: t.border,       hoverBg: t.cardHover },
+    primary:   { bg: t.primary, color: t.textInv,   border: t.primary,      hoverBg: t.primaryHover },
+    secondary: { bg: t.btn,     color: t.text,       border: t.btnBorder,    hoverBg: t.cardHover },
     ghost:     { bg: "transparent", color: t.textSub, border: "transparent", hoverBg: t.badge },
     danger:    { bg: t.redDim,  color: t.red,        border: t.redBorder,    hoverBg: t.red + "22" },
     success:   { bg: t.greenDim,color: t.green,      border: t.greenBorder,  hoverBg: t.green + "22" },
@@ -52,14 +52,19 @@ export function Btn({ children, onClick, variant = "secondary", t, disabled, siz
   const pad = size === "sm" ? "6px 12px" : size === "lg" ? "12px 24px" : "8px 16px";
   const fs  = size === "sm" ? 12 : size === "lg" ? 15 : 13;
   const s = styles[variant];
+  // Neumorphic: raised at rest, pressed (inset) while the mouse is down. Ghost stays flat.
+  const raised = variant === "ghost" ? "none" : size === "sm" ? t.raisedSm : t.raised;
+  const pressed = variant === "ghost" ? "none" : t.inset;
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: t.radiusSm, padding: pad, fontSize: fs, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 6, width: fullWidth ? "100%" : undefined, justifyContent: fullWidth ? "center" : undefined, transition: "all 0.15s", whiteSpace: "nowrap" as const }}
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, boxShadow: raised, borderRadius: t.radiusSm, padding: pad, fontSize: fs, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 6, width: fullWidth ? "100%" : undefined, justifyContent: fullWidth ? "center" : undefined, transition: "all 0.15s", whiteSpace: "nowrap" as const }}
       onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = s.hoverBg; }}
-      onMouseLeave={e => { e.currentTarget.style.background = s.bg; }}
+      onMouseLeave={e => { e.currentTarget.style.background = s.bg; e.currentTarget.style.boxShadow = raised; }}
+      onMouseDown={e => { if (!disabled) e.currentTarget.style.boxShadow = pressed; }}
+      onMouseUp={e => { e.currentTarget.style.boxShadow = raised; }}
     >
       {icon && <span style={{ display: "flex", alignItems: "center" }}>{icon}</span>}
       {children}
@@ -73,7 +78,8 @@ export function Card({ children, t, onClick, hoverable, style }: { children: Rea
   return (
     <div
       onClick={onClick}
-      style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radius, boxShadow: t.shadow, cursor: onClick ? "pointer" : undefined, transition: "box-shadow 0.2s, transform 0.2s", ...style }}
+      data-glass=""
+      style={{ background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: t.radius, boxShadow: t.shadow, cursor: onClick ? "pointer" : undefined, transition: "box-shadow 0.2s, transform 0.2s", ...style }}
       onMouseEnter={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadowMd; e.currentTarget.style.transform = "translateY(-1px)"; } }}
       onMouseLeave={e => { if (lift) { e.currentTarget.style.boxShadow = t.shadow; e.currentTarget.style.transform = "none"; } }}
     >
@@ -100,7 +106,7 @@ export function StatCard({ label, value, sub, icon, color, t }: { label: string;
   return (
     <Card t={t} style={{ padding: "20px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", color }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: t.bg, boxShadow: t.raisedSm, display: "flex", alignItems: "center", justifyContent: "center", color }}>
           {icon}
         </div>
       </div>
@@ -115,7 +121,7 @@ export function StatCard({ label, value, sub, icon, color, t }: { label: string;
 export function ProgressBar({ value, max = 100, color, t }: { value: number; max?: number; color: string; t: Theme }) {
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div style={{ height: 6, background: t.badge, borderRadius: 99, overflow: "hidden" }}>
+    <div style={{ height: 6, background: t.input, boxShadow: t.inset, borderRadius: 99, overflow: "hidden" }}>
       <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.5s ease" }}/>
     </div>
   );
@@ -125,7 +131,7 @@ export function ProgressBar({ value, max = 100, color, t }: { value: number; max
 export function EmptyState({ icon, title, sub, t }: { icon: React.ReactNode; title: string; sub: string; t: Theme }) {
   return (
     <div style={{ textAlign: "center", padding: "40px 24px" }}>
-      <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.badge, color: t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>{icon}</div>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.input, boxShadow: t.inset, color: t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>{icon}</div>
       <div style={{ fontSize: 15, fontWeight: 600, color: t.text, marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 13, color: t.textSub }}>{sub}</div>
     </div>

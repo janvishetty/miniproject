@@ -7,7 +7,7 @@ import { Skeleton, SeverityDonut, HBars } from "./charts";
 function nodeColor(risk: string, t: Theme) {
   if (risk === "critical") return t.red;
   if (risk === "high")     return t.amber;
-  if (risk === "medium")   return t.blue;
+  if (risk === "medium")   return t.medium;
   return t.green;
 }
 
@@ -87,7 +87,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
               {riskNodes.map(node => {
                 const color = nodeColor(node.risk, t);
                 return (
-                  <div key={node.id} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s" }}
+                  <div key={node.id} style={{ background: t.bg, boxShadow: t.raisedSm, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s" }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = color + "0d"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.bg; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -157,7 +157,7 @@ export default function DashboardPage({ t, onNavigate }: Props) {
               <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: t.blue, fontWeight: 500 }}>{inc.id}</span>
               <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{inc.title}</span>
               <span><SevBadge level={inc.sev} t={t}/></span>
-              <span style={{ fontSize: 12, color: inc.status === "OPEN" ? t.red : inc.status === "INVESTIGATING" ? t.amber : inc.status === "CONTAINED" ? t.blue : t.green, fontWeight: 600 }}>{inc.status.charAt(0) + inc.status.slice(1).toLowerCase()}</span>
+              <span style={{ fontSize: 12, color: inc.status === "OPEN" ? t.red : inc.status === "INVESTIGATING" ? t.amber : inc.status === "CONTAINED" ? t.medium : t.green, fontWeight: 600 }}>{inc.status.charAt(0) + inc.status.slice(1).toLowerCase()}</span>
               <span style={{ fontSize: 12, color: t.textMuted, fontFamily: "'DM Mono',monospace" }}>{inc.time}</span>
             </div>
           ))}

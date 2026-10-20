@@ -11,9 +11,16 @@ html, body, #root {
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: rgba(127,137,160,0.45); border-radius: 99px; }
 
 input, textarea, button, select { font-family: inherit; }
+
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+
+/* Glass cards drop the blur for users who ask for reduced transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-glass] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+}
 
 @keyframes fadeUp   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }

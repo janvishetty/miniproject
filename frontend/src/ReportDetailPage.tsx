@@ -34,6 +34,10 @@ const PRINT_CSS = `@media print {
   #root > div > div[style*="position: fixed"] { display: none !important; }
   .report-print-root { padding: 0 !important; overflow: visible !important; }
   .report-aside { position: static !important; }
+  /* Glass/neumorphic off, white page, dark text, in both themes. Only .print-keep elements (bar fills, timeline dots) keep their colour. */
+  html, body, #root > div { background: #fff !important; background-color: #fff !important; background-image: none !important; color: #111827 !important; }
+  .report-print-root *:not(.print-keep) { background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: #111827 !important; border-color: #9ca3af !important; }
+  .print-keep { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }`;
 
 type RepState =
@@ -267,7 +271,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
                 {inc.timeline.map((e, i) => (
                   <div key={i} style={{ display: "flex", gap: 14 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: e.color ?? t.textMuted, marginTop: 3 }}/>
+                      <div className="print-keep" style={{ width: 10, height: 10, borderRadius: "50%", background: e.color ?? t.textMuted, marginTop: 3 }}/>
                       {i < inc.timeline.length - 1 && <div style={{ width: 2, flex: 1, background: t.border, margin: "2px 0" }}/>}
                     </div>
                     <div style={{ paddingBottom: 16 }}>

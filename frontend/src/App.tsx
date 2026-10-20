@@ -68,7 +68,7 @@ function ProfileDropdown({ user, t, isDark, setIsDark, onEdit, onSignOut, onClos
     <div ref={ref} className="animate-fadeUp" style={{ position: "absolute" as const, top: "calc(100% + 8px)", right: 0, width: 260, background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radius, boxShadow: t.shadowLg, zIndex: 200, overflow: "hidden" }}>
       {/* User info */}
       <div style={{ padding: "16px 14px 12px", borderBottom: `1px solid ${t.border}` }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #2563eb, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: t.brandGrad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
           {user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>{user.name}</div>
@@ -107,7 +107,7 @@ function EditProfileModal({ user, t, onSave, onClose }: {
 }) {
   const [form, setForm] = useState({ ...user });
 
-  const inputStyle = { width: "100%", padding: "9px 12px", borderRadius: t.radiusSm, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const };
+  const inputStyle = { width: "100%", padding: "9px 12px", borderRadius: t.radiusSm, border: `1px solid ${t.border}`, background: t.input, boxShadow: t.inset, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const };
 
   return (
     <div className="animate-fadeIn" style={{ position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={onClose}>
@@ -131,7 +131,7 @@ function EditProfileModal({ user, t, onSave, onClose }: {
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 24 }}>
           <button onClick={onClose} style={{ padding: "8px 18px", borderRadius: t.radiusSm, border: `1px solid ${t.border}`, background: "transparent", color: t.textSub, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-          <button onClick={() => { onSave(form); onClose(); }} style={{ padding: "8px 18px", borderRadius: t.radiusSm, border: "none", background: t.blue, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
+          <button onClick={() => { onSave(form); onClose(); }} style={{ padding: "8px 18px", borderRadius: t.radiusSm, border: "none", background: t.primary, boxShadow: t.raisedSm, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
         </div>
       </div>
     </div>
@@ -209,7 +209,7 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <>
-        <div style={{ width: "100%", height: "100vh", fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+        <div style={{ width: "100%", height: "100vh", fontFamily: "'IBM Plex Sans', system-ui, sans-serif", backgroundColor: t.bg, backgroundImage: t.ambient, ["--focus" as string]: t.focus }}>
           <LoginPage t={t} isDark={isDark} setIsDark={setIsDark} onLogin={handleLogin}/>
         </div>
         <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 10, zIndex: 200 }}>
@@ -223,14 +223,14 @@ export default function App() {
   const pageProps = { t, showToast, isDark };
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: t.bg, fontFamily: "'IBM Plex Sans', system-ui, sans-serif", fontSize: 13, color: t.text, overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", backgroundColor: t.bg, backgroundImage: t.ambient, ["--focus" as string]: t.focus, fontFamily: "'IBM Plex Sans', system-ui, sans-serif", fontSize: 13, color: t.text, overflow: "hidden" }}>
 
       {/* ── Navigation bar ── */}
       <nav style={{ background: t.nav, borderBottom: `1px solid ${t.border}`, height: 56, display: "flex", alignItems: "center", padding: "0 20px", flexShrink: 0, boxShadow: t.shadow, zIndex: 10 }}>
 
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingRight: 28, marginRight: 8 }}>
-          <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #2563eb, #1d4ed8)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 32, height: 32, background: t.brandGrad, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
@@ -271,7 +271,7 @@ export default function App() {
             <div
               onClick={() => setShowProfile(v => !v)}
               title={`${user.name} — ${user.position}`}
-              style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #2563eb, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", userSelect: "none" as const, border: showProfile ? `2px solid ${t.blue}` : "2px solid transparent", transition: "border-color 0.15s" }}
+              style={{ width: 34, height: 34, borderRadius: "50%", background: t.brandGrad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", userSelect: "none" as const, border: showProfile ? `2px solid ${t.blue}` : "2px solid transparent", transition: "border-color 0.15s" }}
             >
               {initials}
             </div>

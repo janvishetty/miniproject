@@ -59,7 +59,7 @@ export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
             value={form[key]}
             onChange={e => { setForm(f => ({ ...f, [key]: e.target.value })); setErrors(er => ({ ...er, [key]: "", form: "" })); }}
             placeholder={placeholder}
-            style={{ width: "100%", padding: "9px 12px", paddingRight: key === "password" ? 40 : 12, borderRadius: t.radiusSm, border: `1px solid ${errors[key] ? t.red : t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const }}
+            style={{ width: "100%", padding: "9px 12px", paddingRight: key === "password" ? 40 : 12, borderRadius: t.radiusSm, border: `1px solid ${errors[key] ? t.red : t.border}`, background: t.input, boxShadow: t.inset, color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const }}
           />
           {key === "password" && (
             <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: "absolute" as const, right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: t.textMuted, display: "flex", padding: 0 }}>
@@ -73,12 +73,12 @@ export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
   );
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" as const, background: t.bg, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" as const, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
 
       {/* Minimal top bar */}
       <div style={{ height: 52, background: t.nav, borderBottom: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", boxShadow: t.shadow }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 30, height: 30, background: "linear-gradient(135deg, #2563eb, #1d4ed8)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 30, height: 30, background: t.brandGrad, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
@@ -98,7 +98,7 @@ export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
             <p style={{ margin: 0, fontSize: 14, color: t.textSub }}>FinTech Security Operations Platform</p>
           </div>
 
-          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: t.radiusLg, padding: "28px 28px", boxShadow: t.shadowMd }}>
+          <div data-glass="" style={{ background: t.glass, border: `1px solid ${t.glassBorder}`, backdropFilter: t.blur, WebkitBackdropFilter: t.blur, borderRadius: t.radiusLg, padding: "28px 28px", boxShadow: t.shadowMd }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column" as const, gap: 16 }}>
               {field("email",    "Email",      "email","e.g. k.brennan@vantix.io")}
               {field("password", "Password",   "password", "Min. 8 characters")}
@@ -107,9 +107,9 @@ export default function LoginPage({ t, isDark, setIsDark, onLogin }: Props) {
               <button
                 type="submit"
                 disabled={busy}
-                style={{ opacity: busy ? 0.7 : 1, marginTop: 8, width: "100%", padding: "11px 0", background: "#2563eb", color: "#fff", border: "none", borderRadius: t.radiusSm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#1d4ed8")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#2563eb")}
+                style={{ opacity: busy ? 0.7 : 1, marginTop: 8, width: "100%", padding: "11px 0", background: t.primary, boxShadow: t.raisedSm, color: "#fff", border: "none", borderRadius: t.radiusSm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = t.primaryHover)}
+                onMouseLeave={e => (e.currentTarget.style.background = t.primary)}
               >
                 {busy ? "Signing in..." : "Sign In"}
               </button>

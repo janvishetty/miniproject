@@ -161,7 +161,7 @@ export default function AICopilotPage({ t }: Props) {
               {msg.role === "ai" && (
                 <div style={{ width: 32, height: 32, borderRadius: 9, background: t.blueDim, border: `1px solid ${t.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", color: t.blue, flexShrink: 0, marginTop: 2 }}>{Icons.bot}</div>
               )}
-              <div style={{ maxWidth: "70%", background: msg.role === "user" ? t.blue : t.card, border: `1px solid ${msg.role === "user" ? t.blue : t.border}`, borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "4px 14px 14px 14px", padding: "12px 16px", boxShadow: t.shadow }}>
+              <div style={{ maxWidth: "70%", background: msg.role === "user" ? t.primary : t.card, border: `1px solid ${msg.role === "user" ? t.primary : t.border}`, borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "4px 14px 14px 14px", padding: "12px 16px", boxShadow: t.shadow }}>
                 {msg.thinking ? (
                   <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "2px 0" }}>
                     {[0,1,2].map(j => <div key={j} style={{ width: 7, height: 7, borderRadius: "50%", background: t.blue, animation: `bounce 1.2s ease-in-out ${j*0.15}s infinite` }}/>)}
@@ -190,7 +190,7 @@ export default function AICopilotPage({ t }: Props) {
 
         {/* Input bar */}
         <div style={{ padding: "14px 20px", borderTop: `1px solid ${t.border}`, background: t.card }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radius, padding: "8px 8px 8px 16px" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: t.radius, padding: "8px 8px 8px 16px" }}>
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -203,7 +203,7 @@ export default function AICopilotPage({ t }: Props) {
             <button
               onClick={() => send(input)}
               disabled={busy || !input.trim()}
-              style={{ width: 36, height: 36, borderRadius: 9, background: input.trim() && !busy ? t.blue : t.border, border: "none", color: input.trim() && !busy ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !busy ? "pointer" : "default", transition: "all 0.15s", flexShrink: 0 }}>
+              style={{ width: 36, height: 36, borderRadius: 9, background: input.trim() && !busy ? t.primary : t.border, border: "none", color: input.trim() && !busy ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !busy ? "pointer" : "default", transition: "all 0.15s", flexShrink: 0 }}>
               {busy
                 ? <div className="spinner" style={{ width: 14, height: 14, border: `2px solid ${t.textMuted}`, borderTopColor: t.blue, borderRadius: "50%" }}/>
                 : Icons.send}

@@ -169,7 +169,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
           </div>
 
           {/* Search */}
-          <div style={{ display: "flex", alignItems: "center", background: t.bg, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "7px 12px", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", background: t.input, boxShadow: t.inset, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "7px 12px", gap: 8, marginBottom: 10 }}>
             <span style={{ color: t.textMuted }}>{Icons.search}</span>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title or ID..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: t.text, flex: 1 }}/>
           </div>
