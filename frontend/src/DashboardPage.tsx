@@ -43,8 +43,8 @@ export default function DashboardPage({ t, onNavigate }: Props) {
           : <div aria-label="Loading dashboard">
               <Skeleton t={t} w={260} h={24} style={{ marginBottom: 10 }}/>
               <Skeleton t={t} w={420} h={14} style={{ marginBottom: 24 }}/>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-                {[0, 1, 2, 3].map(i => <Skeleton key={i} t={t} h={118} r={12}/>)}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+                {[0, 1, 2].map(i => <Skeleton key={i} t={t} h={118} r={12}/>)}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16 }}>
                 <Skeleton t={t} h={300} r={12}/>
@@ -56,6 +56,9 @@ export default function DashboardPage({ t, onNavigate }: Props) {
   }
 
   const riskNodes = data.risk_map ?? [];
+  // Quiet endpoints are hidden only when the endpoint field matches AND alerts is exactly 0; a missing or null count keeps the tile.
+  const HIDE_WHEN_QUIET = ["/api/v1/accounts/balance", "/api/v1/transactions/history"];
+  const visibleNodes = riskNodes.filter(n => !(n.endpoint !== undefined && HIDE_WHEN_QUIET.includes(n.endpoint) && n.alerts === 0));
   const stream = data.live_events ?? [];
 
   return (
@@ -68,11 +71,10 @@ export default function DashboardPage({ t, onNavigate }: Props) {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
         <StatCard label="Active Incidents"    value={String(data.active_incidents)} sub={`${data.critical_open} critical need action`} icon={Icons.alert}    color={t.red}   t={t}/>
         <StatCard label="Platform Risk Score" value={`${data.platform_risk_score}/100`} sub="Severity-weighted mean risk of open incidents" icon={Icons.shield}  color={t.amber} progress={{ value: data.platform_risk_score, fill: t.amberFill }} t={t}/>
         <StatCard label="Events Analysed"     value={(data.events_analysed ?? 0).toLocaleString()} sub={data.events_analysed_sub ?? "Scored by the model"} icon={Icons.activity} color={t.link} t={t}/>
-        <StatCard label="Avg Response Time"   value="—" sub="No response data yet" icon={Icons.clock} color={t.green} t={t}/>
       </div>
 
       {/* Middle row */}
@@ -82,9 +84,9 @@ export default function DashboardPage({ t, onNavigate }: Props) {
           {/* Risk heatmap */}
           <Card t={t} style={{ padding: "20px 24px" }}>
             <SectionHead title={data.risk_map_title ?? "Risk Map"} sub="Each node shows its current risk score — red means high priority" t={t}/>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-              {riskNodes.length === 0 && <div style={{ fontSize: 12, color: t.textMuted }}>No risk map data in this run.</div>}
-              {riskNodes.map(node => {
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(max(220px, calc((100% - 20px) / 3)), 1fr))", gap: 10 }}>
+              {visibleNodes.length === 0 && <div style={{ fontSize: 12, color: t.textMuted }}>No risk map data in this run.</div>}
+              {visibleNodes.map(node => {
                 const color = nodeColor(node.risk, t);
                 return (
                   <div key={node.id} style={{ background: t.bg, boxShadow: t.raisedSm, border: `1px solid ${t.border}`, borderRadius: t.radiusSm, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s" }}
