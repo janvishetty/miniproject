@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { Theme } from "./theme";
 import { Card, SevBadge, StatusBadge, Btn, ProgressBar, EmptyState, Icons, sourceLabel } from "./ui";
-import { sevColor } from "./theme";
 import { Skeleton, ImpactBars, hasImpacts } from "./charts";
 import * as api from "./api";
 import { runReportJob } from "./reportJob";
@@ -249,7 +248,7 @@ export default function IncidentsPage({ t, showToast, onChanged, role = "", init
         {detail && (
           <div style={{ padding: "4px 4px 24px" }} className="animate-fadeIn">
             {/* Title */}
-            <div style={{ marginBottom: 20, borderLeft: `3px solid ${sevColor(detail.sev, t).text}`, paddingLeft: 14 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: t.link, fontWeight: 500 }}>{detail.id}</span>
                 <SevBadge level={detail.sev} t={t}/>

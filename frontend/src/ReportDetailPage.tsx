@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as api from "./api";
-import { type Theme, sevColor } from "./theme";
+import type { Theme } from "./theme";
 import { Card, Btn, SevBadge, StatusBadge, EmptyState, Icons, sourceLabel } from "./ui";
 import { Skeleton, ImpactBars, hasImpacts } from "./charts";
 import { runReportJob } from "./reportJob";
@@ -210,7 +210,7 @@ export default function ReportDetailPage({ t, id, showToast, onBack, onOpenIncid
       <>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-          <div style={{ flex: "1 1 360px", minWidth: 0, borderLeft: `3px solid ${sevColor(r.sev, t).text}`, paddingLeft: 14 }}>
+          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
               <span style={{ ...mono, fontSize: 13, color: t.link, fontWeight: 500 }}>{r.id}</span>
               <SevBadge level={r.sev} t={t}/>
